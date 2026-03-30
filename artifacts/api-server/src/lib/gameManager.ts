@@ -12,11 +12,11 @@ interface Player {
 export interface LiveQuestion {
   id: string;
   playerId: number;
-  nickname: string;
   text: string;
   answer: string | null;
   answeredAt: number | null;
   askedAt: number;
+  isPublic: boolean;
 }
 
 interface GameSession {
@@ -62,18 +62,18 @@ export function createGameSession(gameCode: string, quizId: number): GameSession
   return session;
 }
 
-export function addLiveQuestion(gameCode: string, playerId: number, nickname: string, text: string): LiveQuestion | null {
+export function addLiveQuestion(gameCode: string, playerId: number, text: string): LiveQuestion | null {
   const session = gameSessions.get(gameCode);
   if (!session) return null;
 
   const q: LiveQuestion = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     playerId,
-    nickname,
     text: text.slice(0, 300),
     answer: null,
     answeredAt: null,
     askedAt: Date.now(),
+    isPublic: false,
   };
   session.liveQuestions.push(q);
   return q;
@@ -88,6 +88,17 @@ export function answerLiveQuestion(gameCode: string, questionId: string, answer:
 
   q.answer = answer.slice(0, 500);
   q.answeredAt = Date.now();
+  return q;
+}
+
+export function publishLiveQuestion(gameCode: string, questionId: string): LiveQuestion | null {
+  const session = gameSessions.get(gameCode);
+  if (!session) return null;
+
+  const q = session.liveQuestions.find(q => q.id === questionId);
+  if (!q || !q.answer) return null;
+
+  q.isPublic = true;
   return q;
 }
 

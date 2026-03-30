@@ -24,6 +24,7 @@ import {
   getSessionPlayerCount,
   addLiveQuestion,
   answerLiveQuestion,
+  publishLiveQuestion,
   getLiveQuestions,
 } from "../lib/gameManager";
 
@@ -239,23 +240,20 @@ export function setupWebSocket(server: Server): void {
 
           case "ask_question": {
             if (!currentGameCode || !currentPlayerId) return;
-            const session = getGameSession(currentGameCode);
-            if (!session) return;
-
-            const player = session.players.get(currentPlayerId);
-            if (!player) return;
 
             const text = String(msg.payload.text || "").trim();
             if (!text) return;
 
-            const lq = addLiveQuestion(currentGameCode, currentPlayerId, player.nickname, text);
+            const lq = addLiveQuestion(currentGameCode, currentPlayerId, text);
             if (!lq) return;
 
+            // Send to host WITHOUT playerId (anonymous)
             sendToHost(currentGameCode, {
               type: "new_live_question",
-              payload: lq,
+              payload: { id: lq.id, text: lq.text, askedAt: lq.askedAt, answer: null, isPublic: false },
             });
 
+            // Confirm to sender
             sendToPlayer(currentGameCode, currentPlayerId, {
               type: "live_question_sent",
               payload: { id: lq.id },
@@ -273,9 +271,31 @@ export function setupWebSocket(server: Server): void {
             const answered = answerLiveQuestion(currentGameCode, questionId, answerText);
             if (!answered) return;
 
-            broadcast(currentGameCode, {
-              type: "live_question_answered",
-              payload: answered,
+            // Only tell the host about the answer — don't broadcast to players yet
+            sendToHost(currentGameCode, {
+              type: "qa_answered",
+              payload: { id: answered.id, answer: answered.answer, answeredAt: answered.answeredAt, isPublic: false },
+            });
+            break;
+          }
+
+          case "publish_qa": {
+            if (!isHost || !currentGameCode) return;
+
+            const qId = String(msg.payload.questionId || "");
+            const published = publishLiveQuestion(currentGameCode, qId);
+            if (!published) return;
+
+            // Broadcast public Q&A to all players (no playerId — anonymous)
+            broadcastToPlayers(currentGameCode, {
+              type: "qa_published",
+              payload: { id: published.id, text: published.text, answer: published.answer, answeredAt: published.answeredAt },
+            });
+
+            // Confirm to host
+            sendToHost(currentGameCode, {
+              type: "qa_answered",
+              payload: { id: published.id, answer: published.answer, answeredAt: published.answeredAt, isPublic: true },
             });
             break;
           }
@@ -285,7 +305,7 @@ export function setupWebSocket(server: Server): void {
             const questions = getLiveQuestions(currentGameCode);
             ws.send(JSON.stringify({
               type: "live_questions_list",
-              payload: { questions },
+              payload: { questions: questions.map(q => ({ id: q.id, text: q.text, answer: q.answer, isPublic: q.isPublic, askedAt: q.askedAt })) },
             }));
             break;
           }
