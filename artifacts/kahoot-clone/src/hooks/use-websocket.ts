@@ -18,9 +18,21 @@ export function useGameWebSocket() {
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
-    
+    const configuredApiOrigin = import.meta.env.VITE_API_ORIGIN?.trim();
+    const resolvedOrigin = configuredApiOrigin || window.location.origin;
+
+    let wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/ws`;
+
+    try {
+      const apiUrl = new URL(resolvedOrigin);
+      const wsProtocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl = `${wsProtocol}//${apiUrl.host}/api/ws`;
+    } catch {
+      console.warn("[WS] Invalid VITE_API_ORIGIN, falling back to current host", {
+        configuredApiOrigin,
+      });
+    }
+
     try {
       const socket = new WebSocket(wsUrl);
       

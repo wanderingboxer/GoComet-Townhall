@@ -12,7 +12,10 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
-const apiTarget = process.env.API_ORIGIN ?? "http://localhost:3000";
+const apiTarget =
+  process.env.VITE_API_ORIGIN ??
+  process.env.API_ORIGIN ??
+  "http://localhost:3000";
 
 export default defineConfig({
   base: basePath,
