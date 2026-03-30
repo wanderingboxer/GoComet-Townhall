@@ -109,10 +109,12 @@ export default function HostGame() {
 
   // Countdown display timer (server handles real timing)
   useEffect(() => {
-    if (gameState === "question" && timer > 0) {
-      const id = setInterval(() => setTimer(t => Math.max(0, t - 1)), 1000);
-      return () => clearInterval(id);
+    if (gameState !== "question" || timer <= 0) {
+      return undefined;
     }
+
+    const id = setInterval(() => setTimer(t => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(id);
   }, [gameState, timer]);
 
   // Podium confetti

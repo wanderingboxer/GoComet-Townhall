@@ -9,11 +9,14 @@ import confetti from "canvas-confetti";
 type PlayerState = "lobby" | "answering" | "waiting" | "result" | "between_questions" | "podium";
 type Tab = "game" | "qa";
 
-interface PublicQA {
+interface PlayerQAItem {
   id: string;
   text: string;
-  answer: string;
-  answeredAt: number;
+  answer: string | null;
+  askedAt: number;
+  answeredAt: number | null;
+  isPublic: boolean;
+  mine: boolean;
 }
 
 interface LeaderboardEntry {
@@ -45,10 +48,36 @@ export default function PlayerGame() {
 
   // Q&A state
   const [qaInput, setQaInput] = useState("");
-  const [mySentCount, setMySentCount] = useState(0);
-  const [publicQAs, setPublicQAs] = useState<PublicQA[]>([]);
+  const [qaItems, setQaItems] = useState<PlayerQAItem[]>([]);
   const [newQACount, setNewQACount] = useState(0);
   const qaListRef = useRef<HTMLDivElement>(null);
+
+  const upsertQaItem = (item: PlayerQAItem) => {
+    setQaItems((prev) => {
+      const existing = prev.find((qa) => qa.id === item.id);
+
+      if (!existing) {
+        return [...prev, item].sort((a, b) => a.askedAt - b.askedAt);
+      }
+
+      return prev
+        .map((qa) =>
+          qa.id === item.id
+            ? {
+                ...qa,
+                ...item,
+                text: item.text || qa.text,
+                answer: item.answer ?? qa.answer,
+                askedAt: qa.askedAt || item.askedAt,
+                answeredAt: item.answeredAt ?? qa.answeredAt,
+                isPublic: qa.isPublic || item.isPublic,
+                mine: qa.mine || item.mine,
+              }
+            : qa,
+        )
+        .sort((a, b) => a.askedAt - b.askedAt);
+    });
+  };
 
   useEffect(() => {
     if (!nickname) setLocation("/");
@@ -90,7 +119,7 @@ export default function PlayerGame() {
         const lb = (payload.leaderboard as LeaderboardEntry[]) || [];
         setLeaderboard(lb);
         if (gameState === "answering") {
-          setLastResult(prev => prev ?? { isCorrect: false, points: 0, score: prev?.score ?? 0, rank: lb.find(e => e.nickname === nickname)?.rank ?? 0 });
+          setLastResult((prev) => prev ?? { isCorrect: false, points: 0, score: 0, rank: lb.find((e) => e.nickname === nickname)?.rank ?? 0 });
           setGameState("result");
         }
         // Auto-advance to leaderboard after 3s
@@ -104,11 +133,47 @@ export default function PlayerGame() {
         setGameState("podium");
         break;
 
+      case "live_question_sent": {
+        upsertQaItem({
+          id: String(payload.id),
+          text: String(payload.text),
+          answer: null,
+          askedAt: Number(payload.askedAt),
+          answeredAt: null,
+          isPublic: false,
+          mine: true,
+        });
+        setTimeout(() => qaListRef.current?.scrollTo({ top: qaListRef.current?.scrollHeight ?? 0, behavior: "smooth" }), 100);
+        break;
+      }
+
+      case "qa_answered": {
+        upsertQaItem({
+          id: String(payload.id),
+          text: String(payload.text ?? ""),
+          answer: String(payload.answer),
+          askedAt: Number(payload.askedAt ?? Date.now()),
+          answeredAt: Number(payload.answeredAt ?? Date.now()),
+          isPublic: Boolean(payload.isPublic),
+          mine: true,
+        });
+        if (activeTab !== "qa") setNewQACount((n) => n + 1);
+        setTimeout(() => qaListRef.current?.scrollTo({ top: qaListRef.current?.scrollHeight ?? 0, behavior: "smooth" }), 100);
+        break;
+      }
+
       case "qa_published": {
-        const qa: PublicQA = { id: String(payload.id), text: String(payload.text), answer: String(payload.answer), answeredAt: Number(payload.answeredAt) };
-        setPublicQAs(prev => [...prev, qa]);
-        if (activeTab !== "qa") setNewQACount(n => n + 1);
-        setTimeout(() => qaListRef.current?.scrollTo({ top: qaListRef.current.scrollHeight, behavior: "smooth" }), 100);
+        upsertQaItem({
+          id: String(payload.id),
+          text: String(payload.text),
+          answer: String(payload.answer),
+          askedAt: Number(payload.askedAt ?? Date.now()),
+          answeredAt: Number(payload.answeredAt ?? Date.now()),
+          isPublic: true,
+          mine: false,
+        });
+        if (activeTab !== "qa") setNewQACount((n) => n + 1);
+        setTimeout(() => qaListRef.current?.scrollTo({ top: qaListRef.current?.scrollHeight ?? 0, behavior: "smooth" }), 100);
         break;
       }
     }
@@ -135,13 +200,16 @@ export default function PlayerGame() {
     const text = qaInput.trim();
     if (!text || !playerId) return;
     emit("ask_question", { gameCode, text });
-    setMySentCount(n => n + 1);
     setQaInput("");
   };
 
   if (!nickname) return null;
 
-  const myRank = leaderboard.find(e => e.nickname === nickname);
+  const visibleQAs = qaItems
+    .filter((qa) => qa.isPublic || qa.mine)
+    .sort((a, b) => a.askedAt - b.askedAt);
+  const hasMyPendingQa = visibleQAs.some((qa) => qa.mine && !qa.answer);
+  const myRank = leaderboard.find((e) => e.nickname === nickname);
   const showTabs = gameState !== "answering" && gameState !== "podium";
 
   return (
@@ -304,51 +372,66 @@ export default function PlayerGame() {
         {activeTab === "qa" && gameState !== "answering" && gameState !== "podium" && (
           <motion.div key="qa-tab" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-background">
 
-            {/* Published Q&As */}
+            {/* Q&As visible to this player */}
             <div ref={qaListRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 min-h-0">
-              {publicQAs.length === 0 && mySentCount === 0 && (
+              {visibleQAs.length === 0 && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
                   <MessageCircle size={52} className="text-muted-foreground/20 mb-4" />
                   <p className="font-bold text-muted-foreground">Ask a question anonymously</p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">The host will see it and may publish their reply here</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">The host can reply privately to you or publish the answer for everyone</p>
                 </div>
               )}
 
-              {mySentCount > 0 && publicQAs.length === 0 && (
-                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
-                  <Loader2 size={18} className="animate-spin text-primary mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-primary">Question sent! Waiting for the host to respond...</p>
-                </div>
-              )}
-
-              {publicQAs.map((qa, idx) => (
+              {visibleQAs.map((qa, idx) => (
                 <motion.div
                   key={qa.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-white border border-border rounded-2xl overflow-hidden shadow-sm"
+                  className={`border rounded-2xl overflow-hidden shadow-sm ${qa.isPublic ? "bg-green-50 border-green-200" : qa.mine && qa.answer ? "bg-blue-50 border-blue-200" : qa.mine ? "bg-primary/5 border-primary/20" : "bg-white border-border"}`}
                 >
                   <div className="px-4 pt-4 pb-3">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Question</span>
+                      {qa.mine && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary">Yours</span>}
+                      {qa.isPublic && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700">Public</span>}
+                      {!qa.isPublic && qa.mine && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Private</span>}
                     </div>
                     <p className="font-semibold text-foreground text-sm">{qa.text}</p>
                   </div>
-                  <div className="bg-primary/5 border-t border-primary/10 px-4 pt-3 pb-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CheckCircle2 size={13} className="text-primary" />
-                      <span className="text-xs font-bold text-primary uppercase tracking-wider">Host replied</span>
+
+                  {qa.answer ? (
+                    <div className={`border-t px-4 pt-3 pb-4 ${qa.isPublic ? "bg-green-100/60 border-green-200" : "bg-blue-100/60 border-blue-200"}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle2 size={13} className={qa.isPublic ? "text-green-700" : "text-blue-700"} />
+                        <span className={`text-xs font-bold uppercase tracking-wider ${qa.isPublic ? "text-green-700" : "text-blue-700"}`}>
+                          {qa.isPublic ? "Host replied publicly" : "Host replied privately"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground">{qa.answer}</p>
                     </div>
-                    <p className="text-sm text-foreground">{qa.answer}</p>
-                  </div>
+                  ) : qa.mine ? (
+                    <div className="border-t border-primary/10 px-4 pt-3 pb-4 bg-primary/5">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Loader2 size={14} className="animate-spin" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Waiting for host reply</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </motion.div>
               ))}
+
+              {hasMyPendingQa && (
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
+                  <Loader2 size={18} className="animate-spin text-primary mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-primary">Your private question has been sent to the host.</p>
+                </div>
+              )}
             </div>
 
             {/* Ask box */}
             <div className="shrink-0 p-4 border-t border-border bg-white">
-              <p className="text-xs text-muted-foreground text-center mb-2 font-medium">Your question is anonymous — only the host sees it</p>
+              <p className="text-xs text-muted-foreground text-center mb-2 font-medium">Private replies are visible only to you unless the host publishes them</p>
               <div className="flex items-center gap-2 bg-muted rounded-2xl px-4 py-3 border border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                 <input
                   type="text"

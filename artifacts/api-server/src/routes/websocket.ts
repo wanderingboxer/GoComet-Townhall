@@ -253,10 +253,17 @@ export function setupWebSocket(server: Server): void {
               payload: { id: lq.id, text: lq.text, askedAt: lq.askedAt, answer: null, isPublic: false },
             });
 
-            // Confirm to sender
+            // Confirm to sender so they can see their own pending question
             sendToPlayer(currentGameCode, currentPlayerId, {
               type: "live_question_sent",
-              payload: { id: lq.id },
+              payload: {
+                id: lq.id,
+                text: lq.text,
+                answer: null,
+                askedAt: lq.askedAt,
+                answeredAt: null,
+                isPublic: false,
+              },
             });
             break;
           }
@@ -271,10 +278,29 @@ export function setupWebSocket(server: Server): void {
             const answered = answerLiveQuestion(currentGameCode, questionId, answerText);
             if (!answered) return;
 
-            // Only tell the host about the answer — don't broadcast to players yet
+            // Tell the host and the original player privately — don't broadcast to everyone yet
             sendToHost(currentGameCode, {
               type: "qa_answered",
-              payload: { id: answered.id, answer: answered.answer, answeredAt: answered.answeredAt, isPublic: false },
+              payload: {
+                id: answered.id,
+                text: answered.text,
+                answer: answered.answer,
+                askedAt: answered.askedAt,
+                answeredAt: answered.answeredAt,
+                isPublic: false,
+              },
+            });
+
+            sendToPlayer(currentGameCode, answered.playerId, {
+              type: "qa_answered",
+              payload: {
+                id: answered.id,
+                text: answered.text,
+                answer: answered.answer,
+                askedAt: answered.askedAt,
+                answeredAt: answered.answeredAt,
+                isPublic: false,
+              },
             });
             break;
           }
@@ -289,13 +315,27 @@ export function setupWebSocket(server: Server): void {
             // Broadcast public Q&A to all players (no playerId — anonymous)
             broadcastToPlayers(currentGameCode, {
               type: "qa_published",
-              payload: { id: published.id, text: published.text, answer: published.answer, answeredAt: published.answeredAt },
+              payload: {
+                id: published.id,
+                text: published.text,
+                answer: published.answer,
+                askedAt: published.askedAt,
+                answeredAt: published.answeredAt,
+                isPublic: true,
+              },
             });
 
             // Confirm to host
             sendToHost(currentGameCode, {
               type: "qa_answered",
-              payload: { id: published.id, answer: published.answer, answeredAt: published.answeredAt, isPublic: true },
+              payload: {
+                id: published.id,
+                text: published.text,
+                answer: published.answer,
+                askedAt: published.askedAt,
+                answeredAt: published.answeredAt,
+                isPublic: true,
+              },
             });
             break;
           }
