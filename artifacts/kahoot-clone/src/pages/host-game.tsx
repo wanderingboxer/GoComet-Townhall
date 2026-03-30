@@ -3,9 +3,10 @@ import { useRoute, useLocation } from "wouter";
 import { useGetGame } from "@workspace/api-client-react";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, SkipForward, Trophy, Home, MessageCircle, Send, X, CheckCircle2 } from "lucide-react";
+import { Users, SkipForward, Trophy, Home, MessageCircle, Send, X, CheckCircle2, Link2, Copy, Check } from "lucide-react";
 import { CountdownBar, LoadingSpinner, AnswerGrid } from "@/components/game-ui";
 import confetti from "canvas-confetti";
+import { QRCodeSVG } from "qrcode.react";
 
 type GameState = "lobby" | "question" | "leaderboard" | "podium";
 
@@ -41,6 +42,16 @@ export default function HostGame() {
   const [showQaPanel, setShowQaPanel] = useState(false);
   const [answerInputs, setAnswerInputs] = useState<Record<string, string>>({});
   const [unreadQa, setUnreadQa] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}?code=${gameCode}`.replace(/([^:])\/\//, "$1/");
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(joinUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   useEffect(() => {
     if (connected && gameCode) {
@@ -172,17 +183,45 @@ export default function HostGame() {
 
       {/* LOBBY STATE */}
       {gameState === "lobby" && (
-        <div className="relative z-10 flex flex-col h-screen p-6">
-          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 mb-8 flex justify-between items-center shadow-2xl border border-white/20">
-            <div>
-              <p className="text-primary-foreground/80 font-bold text-xl uppercase tracking-widest mb-2">Join at QuizBlast.app with PIN:</p>
-              <h1 className="text-7xl md:text-9xl font-display font-black text-white tracking-widest drop-shadow-lg">{gameCode}</h1>
+        <div className="relative z-10 flex flex-col h-screen p-6 gap-6">
+          {/* Top bar: PIN + QR + Start */}
+          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 flex flex-col md:flex-row gap-6 items-center justify-between shadow-2xl border border-white/20">
+            {/* PIN */}
+            <div className="flex flex-col items-center md:items-start">
+              <p className="text-primary-foreground/80 font-bold text-lg uppercase tracking-widest mb-1">Join with PIN:</p>
+              <h1 className="text-7xl md:text-8xl font-display font-black text-white tracking-widest drop-shadow-lg">{gameCode}</h1>
+              <div className="flex items-center gap-2 mt-3">
+                <Link2 size={14} className="text-white/60" />
+                <span className="text-white/60 text-xs font-mono truncate max-w-xs">{joinUrl}</span>
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors ml-1 shrink-0"
+                >
+                  {copied ? <><Check size={13} /> Copied!</> : <><Copy size={13} /> Copy Link</>}
+                </button>
+              </div>
             </div>
-            <button onClick={handleStart} disabled={players.length === 0} className="game-button bg-white text-primary px-10 py-6 rounded-2xl text-3xl font-black shadow-[0_8px_0_0_rgba(0,0,0,0.2)] disabled:opacity-50">
+
+            {/* QR Code */}
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="bg-white p-3 rounded-2xl shadow-lg">
+                <QRCodeSVG value={joinUrl} size={130} bgColor="#ffffff" fgColor="#1e1b4b" level="M" />
+              </div>
+              <p className="text-white/70 text-xs font-bold uppercase tracking-widest">Scan to Join</p>
+            </div>
+
+            {/* Start button */}
+            <button
+              onClick={handleStart}
+              disabled={players.length === 0}
+              className="game-button bg-white text-primary px-10 py-6 rounded-2xl text-3xl font-black shadow-[0_8px_0_0_rgba(0,0,0,0.2)] disabled:opacity-50 shrink-0"
+            >
               Start
             </button>
           </div>
-          <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+
+          {/* Players area */}
+          <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10 overflow-y-auto">
             <div className="flex items-center gap-3 text-white mb-6">
               <Users size={32} />
               <span className="text-3xl font-display font-bold">{players.length} Players</span>

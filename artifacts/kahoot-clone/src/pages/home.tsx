@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import { Play, Presentation, Sparkles } from "lucide-react";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [gameCode, setGameCode] = useState("");
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const prefilledCode = params.get("code")?.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase() || "";
+  const [gameCode, setGameCode] = useState(prefilledCode);
   const [nickname, setNickname] = useState("");
 
   const handleJoin = (e: React.FormEvent) => {
