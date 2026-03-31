@@ -120,6 +120,8 @@ export default function PlayerGame() {
 
       {/* ─── GAME CONTENT ─── */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div key={gameState} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
             {/* LOBBY */}
             {gameState === "lobby" && (
@@ -235,7 +237,6 @@ export default function PlayerGame() {
               </div>
             )}
           </motion.div>
-        )}
       </AnimatePresence>
 
       </div>
