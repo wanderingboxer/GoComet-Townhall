@@ -115,7 +115,7 @@ export default function LiveQA() {
       {/* Ask Box */}
       <div className="bg-white border-b border-border px-4 sm:px-6 py-5">
         <div className="max-w-2xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Ask a question anonymously</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Ask a question</p>
           <div className="flex items-center gap-3 bg-muted/60 rounded-2xl px-4 py-3 border border-border focus-within:bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
             <input
               type="text"
@@ -134,7 +134,6 @@ export default function LiveQA() {
             </button>
           </div>
           <div className="flex justify-between items-center mt-1.5 px-1">
-            <p className="text-[11px] text-muted-foreground">Your question is anonymous — the presenter may share it on screen.</p>
             <p className="text-[11px] text-muted-foreground">{qaInput.length}/200</p>
           </div>
         </div>
