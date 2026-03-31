@@ -116,9 +116,9 @@ export default function QA() {
     
   }, [hasHostAccess, connected, emit]);
 
-  // SOCKET HANDLER
+  // SOCKET HANDLER - Always call this useEffect, no conditions
   useEffect(() => {
-    if (!lastMessage) return;
+    if (!lastMessage || !hasHostAccess) return;
     
     const { type, payload } = lastMessage;
 
@@ -213,7 +213,7 @@ export default function QA() {
         break;
       }
     }
-  }, [lastMessage, showQaPanel]);
+  }, [lastMessage, showQaPanel, hasHostAccess]);
 
   const handleLogout = async () => {
     await fetch(apiUrl("/api/host-access/logout"), {
