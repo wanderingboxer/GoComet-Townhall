@@ -232,41 +232,131 @@ export default function QA() {
   }
 
   return (
-    <div className="p-6">
-      <button onClick={handleLogout}>
-        <LogOut /> Dashboard
-      </button>
-
-      {qaItems.map((q) => (
-        <motion.div key={q.id}>
-          <p>{q.text}</p>
-
-          {q.answer ? (
-            <p>{q.answer}</p>
-          ) : (
-            <div>
-              <input
-                value={qaAnswers[q.id] || ""}
-                onChange={(e) =>
-                  setQaAnswers((prev) => ({
-                    ...prev,
-                    [q.id]: e.target.value,
-                  }))
-                }
-              />
-              <button onClick={() => handleSendAnswer(q.id)}>
-                <Send />
-              </button>
-            </div>
-          )}
-
-          {q.answer && !q.isPublic && (
-            <button onClick={() => handlePublish(q.id)}>
-              <CheckCircle2 /> Publish
+    <div className="min-h-screen bg-muted/40">
+      <header className="bg-white border-b border-border px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MessageCircle size={24} className="text-primary" />
+            <h1 className="text-2xl font-display font-bold text-foreground">Q&A Management</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowQaPanel(!showQaPanel)}
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+            >
+              <Settings size={20} />
             </button>
-          )}
-        </motion.div>
-      ))}
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
+          {/* Q&A Panel */}
+          <div className="bg-white rounded-2xl border border-border shadow-lg">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center gap-3">
+                <MessageCircle size={24} className="text-primary" />
+                <div>
+                  <h2 className="text-2xl font-display font-black text-foreground">Live Q&A Inbox</h2>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {qaItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <MessageCircle size={48} className="text-muted-foreground/20 mb-4" />
+                  <h3 className="text-xl font-display font-bold text-muted-foreground mb-2">No questions yet</h3>
+                  <p className="text-sm text-muted-foreground">Questions will appear here when participants ask them.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {qaItems.map((q) => (
+                    <motion.div
+                      key={q.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`rounded-2xl border p-4 ${
+                        q.isPublic ? "bg-green-50 border-green-200" : 
+                        q.answer ? "bg-blue-50 border-blue-200" : 
+                        "bg-white border-border"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-foreground mb-2">{q.text}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock size={12} />
+                            <span>{new Date(q.askedAt).toLocaleTimeString()}</span>
+                          </div>
+                        </div>
+                        {q.answer ? (
+                          <div className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                            q.isPublic ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {q.isPublic ? "Public Reply" : "Private Reply"}
+                          </div>
+                        ) : (
+                          <div className="px-2 py-1 rounded-lg bg-orange-100 text-orange-700 text-xs font-medium">
+                            Unanswered
+                          </div>
+                        )}
+                      </div>
+
+                      {q.answer && (
+                        <div className="border-t pt-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-foreground mb-2">{q.answer}</p>
+                              <p className="text-xs text-muted-foreground">by {q.answeredBy || "Host"}</p>
+                            </div>
+                            {!q.isPublic && (
+                              <button
+                                onClick={() => handlePublish(q.id)}
+                                className="ml-4 px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 text-sm font-medium hover:bg-green-100 transition-colors flex items-center gap-2"
+                              >
+                                <CheckCircle2 size={14} />
+                                Make Public
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {!q.answer && (
+                        <div className="border-t pt-3">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Type your answer..."
+                              value={qaAnswers[q.id] || ""}
+                              onChange={(e) => setQaAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                            />
+                            <button
+                              onClick={() => handleSendAnswer(q.id)}
+                              className="px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                            >
+                              <Send size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
