@@ -50,18 +50,27 @@ export default function QA() {
   useEffect(() => {
     const checkAccess = async () => {
       try {
+        const storedCode = getStoredHostAccessCode();
+        const storedName = typeof window !== "undefined"
+          ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)
+          : null;
+        
+        console.log("QA: Checking access", { storedCode, storedName });
+
         const res = await fetch(apiUrl("/api/host-access/status"), {
           credentials: "include",
           headers: getHostAccessHeaders(),
         });
         const data = await res.json();
+        console.log("QA: Server response", data);
         setHasHostAccess(Boolean(data.authenticated));
         if (!data.authenticated) {
           setAuthError("Host access required. Please login from dashboard.");
           // Redirect to dashboard after a short delay
           setTimeout(() => setLocation("/dashboard"), 2000);
         }
-      } catch {
+      } catch (error) {
+        console.log("QA: Access check failed", error);
         setAuthError("Could not verify host access.");
         setTimeout(() => setLocation("/dashboard"), 2000);
       } finally {

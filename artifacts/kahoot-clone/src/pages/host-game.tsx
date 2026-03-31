@@ -5,7 +5,7 @@ import { useGameWebSocket } from "@/hooks/use-websocket";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, SkipForward, Trophy, Home,
-  Copy, Check, Clock
+  Copy, Check, Clock, Link2, Smartphone
 } from "lucide-react";
 import { CountdownBar, LoadingSpinner, AnswerGrid } from "@/components/game-ui";
 import confetti from "canvas-confetti";
@@ -51,7 +51,7 @@ export default function HostGame() {
 
   // FIXED: Missing Q&A state
   const [qaItems, setQaItems] = useState<HostQA[]>([]);
-  const [showQaPanel] = useState(false);
+  const [showQaPanel, setShowQaPanel] = useState(false);
   const [unreadQa, setUnreadQa] = useState(0);
 
   const hostDisplayName =
@@ -66,6 +66,9 @@ export default function HostGame() {
 
   const quizJoinUrl = `${origin}${import.meta.env.BASE_URL}?code=${gameCode}`.replace(/([^:])\/\//g, "$1/");
   const homeUrl = `${origin}${import.meta.env.BASE_URL}`.replace(/([^:])\/\//g, "$1/");
+
+  // Generate join link
+  const joinLink = quizJoinUrl;
 
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -174,65 +177,320 @@ export default function HostGame() {
 
   // ---------------- UI ----------------
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-[#0C214C] via-[#1A316C] to-[#0054FF] flex flex-col">
+      {/* Header */}
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <Trophy className="text-yellow-300" size={20} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-display font-black text-white">Game Host</h1>
+              <p className="text-white/70 text-sm">Game Code: <span className="font-mono font-bold">{gameCode}</span></p>
+            </div>
+          </div>
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="px-4 py-2 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center gap-2"
+          >
+            <Home size={16} />
+            Dashboard
+          </button>
+        </div>
+      </header>
 
       {/* LOBBY */}
       {gameState === "lobby" && (
-        <div className="p-6">
-          <h2>{players.length} Players</h2>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 p-8 max-w-4xl w-full"
+          >
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
+                <Users className="text-white" size={40} />
+              </div>
+              <h2 className="text-3xl font-display font-black text-white mb-2">Game Lobby</h2>
+              <p className="text-white/70">Waiting for players to join...</p>
+            </div>
 
-          <button onClick={handleStart} disabled={!players.length}>
-            Start Game
-          </button>
+            <div className="grid md:grid-cols-2 gap-8 mb-6">
+              {/* Left Column - Join Info */}
+              <div className="space-y-4">
+                <div className="bg-white/10 rounded-2xl p-6">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <Smartphone size={20} />
+                    Join Options
+                  </h3>
+                  
+                  {/* Game Code */}
+                  <div className="mb-4">
+                    <label className="text-white/70 text-sm block mb-2">Game Code</label>
+                    <div className="flex gap-2">
+                      <div className="flex-1 bg-white/20 rounded-xl px-4 py-3 text-center font-mono text-2xl font-bold text-white">
+                        {gameCode}
+                      </div>
+                      <button
+                        onClick={() => handleCopyLink(gameCode)}
+                        className="px-4 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors"
+                      >
+                        {copied ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                    </div>
+                  </div>
 
-          {players.map((p) => (
-            <div key={p.playerId}>{p.nickname}</div>
-          ))}
+                  {/* Join Link */}
+                  <div>
+                    <label className="text-white/70 text-sm block mb-2">Join Link</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={joinLink}
+                        readOnly
+                        className="flex-1 bg-white/20 rounded-xl px-4 py-3 text-white font-mono text-sm"
+                      />
+                      <button
+                        onClick={() => handleCopyLink(joinLink)}
+                        className="px-4 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors"
+                      >
+                        {copied ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - QR Code */}
+              <div className="bg-white/10 rounded-2xl p-6">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Link2 size={20} />
+                  Scan to Join
+                </h3>
+                <div className="bg-white rounded-2xl p-4 flex justify-center">
+                  <QRCodeSVG
+                    value={joinLink}
+                    size={200}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <p className="text-white/70 text-sm text-center mt-4">
+                  Scan this QR code with your mobile device to join the quiz
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white/10 rounded-2xl p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">Players Joined</h3>
+                <span className="bg-white/20 text-white px-3 py-1 rounded-full font-bold">
+                  {players.length}
+                </span>
+              </div>
+              
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {players.length === 0 ? (
+                  <p className="text-white/50 text-center py-4">No players yet. Share the join options above!</p>
+                ) : (
+                  players.map((p) => (
+                    <motion.div
+                      key={p.playerId}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="bg-white/10 rounded-xl px-4 py-3 flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <Users size={16} className="text-white" />
+                      </div>
+                      <span className="text-white font-medium">{p.nickname}</span>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleStart}
+              disabled={!players.length}
+              className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-green-400 to-green-600 text-white font-bold hover:from-green-500 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+            >
+              <Trophy size={20} />
+              Start Game
+            </button>
+          </motion.div>
         </div>
       )}
 
       {/* QUESTION */}
       {gameState === "question" && currentQuestion && (
-        <div className="p-6">
-          <h2>{currentQuestion.text}</h2>
-          <p>{timer}s</p>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 p-8 max-w-4xl w-full"
+          >
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white/70">Question {questionIndex + 1} of {totalQuestions}</span>
+                <div className="flex items-center gap-2 text-white">
+                  <Clock size={16} />
+                  <span className="font-mono font-bold">{timer}s</span>
+                </div>
+              </div>
+              <CountdownBar timeLimit={30} timeLeft={timer} />
+            </div>
 
-          <AnswerGrid
-            options={currentQuestion.options}
-            disabled
-            correctOption={correctOption ?? undefined}
-            showResults={correctOption !== null}
-          />
+            <div className="bg-white/10 rounded-2xl p-6 mb-6">
+              <h2 className="text-2xl font-display font-bold text-white mb-2">{currentQuestion.text}</h2>
+              <p className="text-white/70 text-sm">
+                {answersCount} of {players.length} players answered
+              </p>
+            </div>
 
-          <button onClick={handleSkip}>Skip</button>
+            <AnswerGrid
+              options={currentQuestion.options}
+              disabled
+              correctOption={correctOption ?? undefined}
+              showResults={correctOption !== null}
+            />
+
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handleSkip}
+                className="px-6 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center gap-2"
+              >
+                <SkipForward size={16} />
+                Skip Question
+              </button>
+              {correctOption !== null && (
+                <button
+                  onClick={handleNext}
+                  className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold hover:from-blue-500 hover:to-blue-700 transition-all flex items-center justify-center gap-2"
+                >
+                  Next Question
+                </button>
+              )}
+            </div>
+          </motion.div>
         </div>
       )}
 
       {/* LEADERBOARD */}
       {gameState === "leaderboard" && (
-        <div className="p-6">
-          <h2>Leaderboard</h2>
-
-          {leaderboard.slice(0, 5).map((p, i) => (
-            <div key={i}>
-              {p.nickname} - {p.score}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 p-8 max-w-2xl w-full"
+          >
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
+                <Trophy className="text-yellow-300" size={40} />
+              </div>
+              <h2 className="text-3xl font-display font-black text-white mb-2">Leaderboard</h2>
+              <p className="text-white/70">Question {questionIndex} Results</p>
             </div>
-          ))}
 
-          <button onClick={handleNext}>Next</button>
+            <div className="space-y-3 mb-6">
+              {leaderboard.slice(0, 5).map((p, i) => (
+                <motion.div
+                  key={p.nickname}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`rounded-xl p-4 flex items-center gap-4 ${
+                    i === 0 ? "bg-gradient-to-r from-yellow-400/30 to-yellow-600/30 border border-yellow-400/50" :
+                    i === 1 ? "bg-gradient-to-r from-gray-400/30 to-gray-600/30 border border-gray-400/50" :
+                    i === 2 ? "bg-gradient-to-r from-orange-400/30 to-orange-600/30 border border-orange-400/50" :
+                    "bg-white/10"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                    i === 0 ? "bg-yellow-500" :
+                    i === 1 ? "bg-gray-500" :
+                    i === 2 ? "bg-orange-500" :
+                    "bg-white/20"
+                  }`}>
+                    {i + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-bold">{p.nickname}</p>
+                    <p className="text-white/70 text-sm">{p.score} points</p>
+                  </div>
+                  {i === 0 && <Trophy className="text-yellow-300" size={20} />}
+                </motion.div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleNext}
+              className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold hover:from-blue-500 hover:to-blue-700 transition-all flex items-center justify-center gap-2"
+            >
+              Next Question
+            </button>
+          </motion.div>
         </div>
       )}
 
       {/* PODIUM */}
       {gameState === "podium" && (
-        <div className="p-6 text-center">
-          <h1>Podium</h1>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 p-8 max-w-2xl w-full text-center"
+          >
+            <div className="mb-8">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 flex items-center justify-center mx-auto mb-4">
+                <Trophy className="text-white" size={48} />
+              </div>
+              <h1 className="text-4xl font-display font-black text-white mb-2">Game Complete!</h1>
+              <p className="text-white/70">Final Results</p>
+            </div>
 
-          {leaderboard[0] && <h2>🏆 {leaderboard[0].nickname}</h2>}
+            <div className="space-y-4 mb-8">
+              {leaderboard.slice(0, 3).map((p, i) => (
+                <motion.div
+                  key={p.nickname}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.2 }}
+                  className={`rounded-2xl p-6 ${
+                    i === 0 ? "bg-gradient-to-r from-yellow-400/30 to-yellow-600/30 border-2 border-yellow-400" :
+                    i === 1 ? "bg-gradient-to-r from-gray-400/30 to-gray-600/30 border-2 border-gray-400" :
+                    "bg-gradient-to-r from-orange-400/30 to-orange-600/30 border-2 border-orange-400"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-lg ${
+                        i === 0 ? "bg-yellow-500" :
+                        i === 1 ? "bg-gray-500" :
+                        "bg-orange-500"
+                      }`}>
+                        {i + 1}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-white font-bold text-lg">{p.nickname}</p>
+                        <p className="text-white/70">{p.score} points</p>
+                      </div>
+                    </div>
+                    {i === 0 && <Trophy className="text-yellow-300" size={24} />}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
 
-          <button onClick={() => setLocation("/dashboard")}>
-            Dashboard
-          </button>
+            <button
+              onClick={() => setLocation("/dashboard")}
+              className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-green-400 to-green-600 text-white font-bold hover:from-green-500 hover:to-green-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Home size={16} />
+              Back to Dashboard
+            </button>
+          </motion.div>
         </div>
       )}
     </div>

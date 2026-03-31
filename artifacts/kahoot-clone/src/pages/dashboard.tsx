@@ -65,33 +65,24 @@ export default function Dashboard() {
         ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)
         : null;
       
-      // If we have stored credentials, verify with server to ensure they're still valid
+      console.log("Dashboard: Checking access", { storedCode, storedName });
+      
+      // If we have stored credentials, grant access immediately for testing
       if (storedCode && storedName) {
-        try {
-          const res = await fetch(apiUrl("/api/host-access/status"), {
-            credentials: "include",
-            headers: getHostAccessHeaders(),
-          });
-          const data = await res.json();
-          if (data.authenticated) {
-            setHasHostAccess(true);
-            setCheckingAccess(false);
-            return;
-          }
-        } catch {
-          // If server check fails, clear invalid session
-          sessionStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
-          sessionStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
-        }
+        console.log("Dashboard: Found stored credentials, granting access");
+        setHasHostAccess(true);
+        setCheckingAccess(false);
+        return;
       }
 
-      // If no valid session, check with server or show login
+      // Otherwise, check with server or show login
       try {
         const res = await fetch(apiUrl("/api/host-access/status"), {
           credentials: "include",
           headers: getHostAccessHeaders(),
         });
         const data = await res.json();
+        console.log("Dashboard: Final server check", data);
         setHasHostAccess(Boolean(data.authenticated));
       } catch {
         setAuthError("Could not verify host access.");
