@@ -64,7 +64,6 @@ export default function Home() {
 
     if (type === "global_live_questions_list") {
       const questions = payload?.questions || [];
-
       setQaItems(
         questions.map((q: any) => ({
           id: String(q.id),
@@ -76,6 +75,64 @@ export default function Home() {
           isPublic: Boolean(q.isPublic),
           mine: Boolean(q.mine),
         }))
+      );
+    }
+
+    if (type === "global_new_question") {
+      const q = payload as any;
+      if (!q?.id) return;
+      setQaItems((prev) =>
+        prev.find((item) => item.id === String(q.id))
+          ? prev
+          : [
+              ...prev,
+              {
+                id: String(q.id),
+                text: String(q.text),
+                answer: null,
+                answeredBy: null,
+                askedAt: Number(q.askedAt),
+                answeredAt: null,
+                isPublic: false,
+                mine: Boolean(q.mine),
+              },
+            ]
+      );
+    }
+
+    if (type === "global_qa_answered_private") {
+      const q = payload as any;
+      if (!q?.id) return;
+      setQaItems((prev) =>
+        prev.map((item) =>
+          item.id === String(q.id)
+            ? {
+                ...item,
+                answer: String(q.answer),
+                answeredBy: q.answeredBy ?? item.answeredBy,
+                answeredAt: q.answeredAt ?? Date.now(),
+                isPublic: false,
+              }
+            : item
+        )
+      );
+    }
+
+    if (type === "global_qa_published") {
+      const q = payload as any;
+      if (!q?.id) return;
+      setQaItems((prev) =>
+        prev.map((item) =>
+          item.id === String(q.id)
+            ? {
+                ...item,
+                answer: q.answer ?? item.answer,
+                answeredBy: q.answeredBy ?? item.answeredBy,
+                answeredAt: q.answeredAt ?? item.answeredAt,
+                isPublic: true,
+              }
+            : item
+        )
       );
     }
   }, [lastMessage]);

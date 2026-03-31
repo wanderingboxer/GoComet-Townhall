@@ -87,7 +87,7 @@ export default function QA() {
         : "Host";
 
     console.log("QA: Joining as host", { accessKey: getStoredHostAccessCode(), hostName });
-    emit("host_join", { gameCode: "qa-room", accessKey: getStoredHostAccessCode(), hostName });
+    emit("qa_host_join", { accessKey: getStoredHostAccessCode(), hostName });
 
     console.log("QA: Requesting questions");
     emit("get_live_questions", {});
@@ -222,13 +222,13 @@ export default function QA() {
 
     console.log("QA: Sending answer", { questionId: qId, answer });
 
-    emit("answer_global_question", { questionId: qId, answer });
+    emit("answer_global_question", { questionId: qId, answer, hostName });
 
     console.log("QA: Updating local state immediately");
     setQaItems((prev) =>
       prev.map((q) =>
         q.id === qId
-          ? { ...q, answer, answeredBy: "Host", answeredAt: Date.now() }
+          ? { ...q, answer, answeredBy: hostName, answeredAt: Date.now() }
           : q
       )
     );
@@ -242,7 +242,7 @@ export default function QA() {
 
     console.log("QA: Publishing question", { questionId: qId, answer: question.answer });
     
-    emit("publish_question", { questionId: qId });
+    emit("publish_global_question", { questionId: qId });
 
     console.log("QA: Updating local state to make public");
     setQaItems((prev) =>

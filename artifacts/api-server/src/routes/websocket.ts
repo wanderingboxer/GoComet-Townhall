@@ -127,6 +127,40 @@ export function setupWebSocket(server: Server): void {
             break;
           }
 
+          case "qa_host_join": {
+            const accessKey = String(msg.payload.accessKey ?? "");
+            const isAuthorizedHost = hasAuthorizedHostAccess || verifyHostAccessCode(accessKey);
+
+            if (!isAuthorizedHost) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Host access required" } }));
+              return;
+            }
+
+            isHost = true;
+            authorizedHostSockets.add(ws);
+
+            ws.send(JSON.stringify({ type: "qa_host_joined", payload: {} }));
+
+            ws.send(JSON.stringify({
+              type: "global_live_questions_list",
+              payload: {
+                questions: getGlobalLiveQuestions().map((q) => ({
+                  id: q.id,
+                  text: q.text,
+                  answer: q.answer,
+                  answeredBy: q.answeredBy,
+                  askedAt: q.askedAt,
+                  answeredAt: q.answeredAt,
+                  isPublic: q.isPublic,
+                  clientId: q.clientId,
+                })),
+              },
+            }));
+
+            logger.info("QA-only host connected");
+            break;
+          }
+
           case "qa_client_join": {
             const clientId = String(msg.payload.clientId ?? "").trim();
             if (!clientId) {
