@@ -101,6 +101,19 @@ export default function QA() {
     console.log("QA: Received message", { type, payload });
 
     switch (type) {
+      case "error": {
+        console.error("QA: Server error", payload);
+        // Show specific error to user
+        const errorMessage = payload?.message || payload?.error || "Unknown server error";
+        setAuthError(`Q&A Error: ${errorMessage}`);
+        
+        // If it's an authentication error, redirect to dashboard
+        if (errorMessage?.toLowerCase().includes("unauthorized") || errorMessage?.toLowerCase().includes("access denied")) {
+          setTimeout(() => setLocation("/dashboard"), 3000);
+        }
+        break;
+      }
+
       case "live_questions_list":
       case "global_live_questions_list": {
         const questions = Array.isArray(payload?.questions) ? payload.questions : [];

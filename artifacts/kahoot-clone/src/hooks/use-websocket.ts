@@ -81,10 +81,18 @@ export function useGameWebSocket() {
   }, [connect]);
 
   const emit = useCallback((type: string, payload?: any) => {
+    console.log("[WS] Emit attempt", { type, payload, readyState: wsRef.current?.readyState });
+    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type, payload }));
+      const message = JSON.stringify({ type, payload });
+      console.log("[WS] Sending message:", message);
+      wsRef.current.send(message);
     } else {
-      console.warn("[WS] Cannot emit, socket not connected", { type });
+      console.warn("[WS] Cannot emit, socket not connected", { 
+        type, 
+        readyState: wsRef.current?.readyState,
+        state: wsRef.current?.readyState === WebSocket.OPEN ? 'OPEN' : 'NOT OPEN'
+      });
     }
   }, []);
 
