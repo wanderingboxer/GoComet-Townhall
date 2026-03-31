@@ -98,6 +98,7 @@ export default function QA() {
     if (!lastMessage || !hasHostAccess) return;
 
     const { type, payload } = lastMessage;
+    console.log("QA: Received message", { type, payload });
 
     switch (type) {
       case "live_questions_list":
@@ -197,8 +198,11 @@ export default function QA() {
     const answer = (qaAnswers[qId] || "").trim();
     if (!answer) return;
 
+    console.log("QA: Sending answer", { questionId: qId, answer });
+
     emit("answer_global_question", { questionId: qId, answer });
 
+    console.log("QA: Updating local state immediately");
     setQaItems((prev) =>
       prev.map((q) =>
         q.id === qId
@@ -214,8 +218,11 @@ export default function QA() {
     const question = qaItems.find((q) => q.id === qId);
     if (!question || !question.answer) return;
 
+    console.log("QA: Publishing question", { questionId: qId, answer: question.answer });
+    
     emit("publish_question", { questionId: qId });
 
+    console.log("QA: Updating local state to make public");
     setQaItems((prev) =>
       prev.map((q) => (q.id === qId ? { ...q, isPublic: true } : q))
     );
