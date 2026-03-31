@@ -371,14 +371,7 @@ export default function Dashboard() {
           </div>
         )}
       </main>
-
-      <footer className="mt-12 border-t border-border bg-white/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-center text-sm text-muted-foreground">
-            © 2024 GoComet Townhall. Built with ❤️ for GoComet.
-          </p>
-        </div>
-      </footer>
+      
     </div>
   );
 }
