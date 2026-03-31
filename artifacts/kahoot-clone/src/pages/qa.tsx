@@ -25,6 +25,7 @@ export default function QA() {
 
   const [qaItems, setQaItems] = useState<QAItem[]>([]);
   const [qaAnswers, setQaAnswers] = useState<Record<string, string>>({});
+  const [showQaPanel, setShowQaPanel] = useState(true);
   const [unreadQa, setUnreadQa] = useState(0);
 
   const [hasHostAccess, setHasHostAccess] = useState(false);
@@ -207,6 +208,9 @@ export default function QA() {
   };
 
   const handlePublish = (qId: string) => {
+    const question = qaItems.find((q) => q.id === qId);
+    if (!question || !question.answer) return;
+
     emit("publish_question", { questionId: qId });
 
     setQaItems((prev) =>
