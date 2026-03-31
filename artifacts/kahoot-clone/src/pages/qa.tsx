@@ -116,45 +116,6 @@ export default function QA() {
     
   }, [hasHostAccess, connected, emit]);
 
-  const handleLogout = async () => {
-    await fetch(apiUrl("/api/host-access/logout"), {
-      method: "POST",
-      credentials: "include",
-    });
-
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
-      window.sessionStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
-    }
-    setLocation("/dashboard");
-  };
-
-  if (checkingAccess) {
-    return <LoadingSpinner message="Checking host access..." />;
-  }
-
-  if (!hasHostAccess) {
-    return (
-      <div className="min-h-screen bg-muted/40 px-4 flex items-center justify-center">
-        <div className="w-full max-w-md bg-white border border-border rounded-[28px] p-8 shadow-xl">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5">
-            <Shield size={24} />
-          </div>
-          <h1 className="text-3xl font-display font-black text-foreground">Access Denied</h1>
-          <p className="mt-2 text-sm text-muted-foreground leading-6">
-            {authError || "Host access required. Please login from dashboard."}
-          </p>
-          <button
-            onClick={() => setLocation("/dashboard")}
-            className="w-full mt-6 game-button brand-gradient text-white px-5 py-3 rounded-xl font-bold"
-          >
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // SOCKET HANDLER
   useEffect(() => {
     if (!lastMessage) return;
@@ -254,6 +215,19 @@ export default function QA() {
     }
   }, [lastMessage, showQaPanel]);
 
+  const handleLogout = async () => {
+    await fetch(apiUrl("/api/host-access/logout"), {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
+      window.sessionStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
+    }
+    setLocation("/dashboard");
+  };
+
   const handleSendAnswer = (qId: string) => {
     const answer = (qaAnswers[qId] || "").trim();
     if (!answer) return;
@@ -292,7 +266,30 @@ export default function QA() {
     ));
   };
 
+  // Early returns must be after all hooks
   if (typeof window === "undefined") return <LoadingSpinner message="Loading Q&A Management..." />;
+  if (checkingAccess) return <LoadingSpinner message="Checking host access..." />;
+  if (!hasHostAccess) {
+    return (
+      <div className="min-h-screen bg-muted/40 px-4 flex items-center justify-center">
+        <div className="w-full max-w-md bg-white border border-border rounded-[28px] p-8 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5">
+            <Shield size={24} />
+          </div>
+          <h1 className="text-3xl font-display font-black text-foreground">Access Denied</h1>
+          <p className="mt-2 text-sm text-muted-foreground leading-6">
+            {authError || "Host access required. Please login from dashboard."}
+          </p>
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="w-full mt-6 game-button brand-gradient text-white px-5 py-3 rounded-xl font-bold"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
