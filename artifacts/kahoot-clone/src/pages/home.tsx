@@ -92,7 +92,7 @@ export default function Home() {
                   <MessageCircle size={24} />
                   <div className="text-left">
                     <h3 className="text-lg font-display font-bold">Live Q&amp;A</h3>
-                    <p className="text-sm opacity-80">Ask questions anonymously during presentations</p>
+                    <p className="text-sm opacity-80">Ask questions</p>
                   </div>
                 </button>
 
@@ -119,7 +119,7 @@ export default function Home() {
                 <div className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-1">Live Q&amp;A</p>
                   <p className="text-sm font-semibold text-foreground">
-                    Ask the presenter questions anonymously during the presentation. Public questions are shown to everyone.
+                    Ask questions. 
                   </p>
                 </div>
                 <Link href="/live-qa" className="block">
