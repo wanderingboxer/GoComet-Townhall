@@ -92,20 +92,31 @@ export default function Dashboard() {
     };
 
     checkAccess();
+    
+    // Also check session periodically
+    const interval = setInterval(() => {
+      const storedCode = getStoredHostAccessCode();
+      const storedName = typeof window !== "undefined" 
+        ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)
+        : null;
+      
+      if (storedCode && storedName) {
+        setHasHostAccess(true);
+      }
+    }, 1000); // Check every second
+    
+    return () => clearInterval(interval);
   }, []); // Run on every mount to check session
-
-  // Preserve session when component unmounts
-  useEffect(() => {
-    return () => {
-      // Don't clear session on unmount
-    };
-  }, []);
 
   // ---------------- QUERIES ----------------
   const { data: quizzes, error } = useListQuizzes({
     query: {
       queryKey: getListQuizzesQueryKey(),
       enabled: hasHostAccess,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   });
 
