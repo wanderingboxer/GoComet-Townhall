@@ -33,7 +33,10 @@ export default function PlayerGame() {
   const gameCode = params?.gameCode || "";
   const initialTab = new URLSearchParams(search).get("tab") === "qa" ? "qa" : "game";
 
-  const nickname = sessionStorage.getItem("quizblast_nickname");
+  const [nickname, setNickname] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return sessionStorage.getItem("quizblast_nickname") || "";
+  });
   const [playerId, setPlayerId] = useState<number | null>(null);
 
   const { connected, lastMessage, emit } = useGameWebSocket();
@@ -84,8 +87,16 @@ export default function PlayerGame() {
   };
 
   useEffect(() => {
-    if (!nickname) setLocation("/");
-  }, [nickname, setLocation]);
+    // Quiz answers require a nickname; Q&A can be opened without name entry.
+    if (!nickname && activeTab !== "qa") setLocation("/");
+  }, [nickname, activeTab, setLocation]);
+
+  useEffect(() => {
+    if (nickname || activeTab !== "qa") return;
+    const anon = `Anonymous${Math.floor(Math.random() * 9000) + 1000}`;
+    sessionStorage.setItem("quizblast_nickname", anon);
+    setNickname(anon);
+  }, [nickname, activeTab]);
 
   useEffect(() => {
     if (connected && gameCode && nickname && !hasJoined.current) {
@@ -210,8 +221,6 @@ export default function PlayerGame() {
     setQaInput("");
   };
 
-  if (!nickname) return null;
-
   const visibleQAs = qaItems
     .filter((qa) => qa.isPublic || qa.mine)
     .sort((a, b) => a.askedAt - b.askedAt);
@@ -225,7 +234,7 @@ export default function PlayerGame() {
       {/* Header */}
       <header className="shrink-0 h-14 bg-white border-b border-border flex items-center justify-between px-4 z-20 shadow-sm">
         <div className="font-bold text-sm text-muted-foreground tracking-widest uppercase">PIN: {gameCode}</div>
-        <div className="font-bold text-sm text-foreground bg-muted px-3 py-1 rounded-full truncate max-w-[140px]">{nickname}</div>
+        <div className="font-bold text-sm text-foreground bg-muted px-3 py-1 rounded-full truncate max-w-[140px]">{nickname || "Anonymous"}</div>
       </header>
 
       {/* Tab Bar (shown throughout the live session) */}

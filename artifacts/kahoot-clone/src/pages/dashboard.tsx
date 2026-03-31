@@ -311,7 +311,7 @@ export default function Dashboard() {
               <div key={quiz.id} className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all group flex flex-col">
                 <div className="h-32 bg-gradient-to-br from-[#0C214C] via-[#1A316C] to-[#0054FF] flex items-center justify-center relative">
                   <span className="text-5xl font-display font-black text-white/25">{quiz.questionCount}Q</span>
-                  <div className="absolute inset-0 bg-[#0C214C]/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                  <div className="absolute inset-0 bg-[#0C214C]/15 opacity-100 flex items-center justify-center gap-4">
                     <button
                       onClick={() => handleLaunchSession(quiz.id, true)}
                       className="game-button bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(12,33,76,0.2)] hover:-translate-y-1"

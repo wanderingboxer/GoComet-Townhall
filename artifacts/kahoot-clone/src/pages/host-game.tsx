@@ -54,10 +54,11 @@ export default function HostGame() {
   const [unreadQa, setUnreadQa] = useState(0);
   const [copied, setCopied] = useState(false);
 
-  const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}?code=${gameCode}`.replace(/([^:])\/\//, "$1/");
+  const quizJoinUrl = `${window.location.origin}${import.meta.env.BASE_URL}?code=${gameCode}`.replace(/([^:])\/\//g, "$1/");
+  const homeUrl = `${window.location.origin}${import.meta.env.BASE_URL}`.replace(/([^:])\/\//g, "$1/");
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(joinUrl).then(() => {
+  const handleCopyLink = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -131,6 +132,67 @@ export default function HostGame() {
         if (!showQaPanel) setUnreadQa(n => n + 1);
         break;
       }
+      case "global_live_questions_list": {
+        const questions = (Array.isArray(payload.questions) ? payload.questions : []) as Array<{
+          id: string | number;
+          text: string;
+          answer?: string | null;
+          answeredBy?: string | null;
+          isPublic?: boolean;
+          askedAt: number;
+        }>;
+        setQaItems(
+          questions
+            .map((question) => ({
+              id: String(question.id),
+              text: String(question.text),
+              answer: question.answer ? String(question.answer) : null,
+              answeredBy: question.answeredBy ? String(question.answeredBy) : null,
+              isPublic: Boolean(question.isPublic),
+              askedAt: Number(question.askedAt),
+            }))
+            .sort((a: HostQA, b: HostQA) => a.askedAt - b.askedAt),
+        );
+        break;
+      }
+      case "global_new_question": {
+        const q: HostQA = { id: String(payload.id), text: String(payload.text), answer: null, answeredBy: null, isPublic: false, askedAt: Number(payload.askedAt) };
+        setQaItems(prev => prev.find(item => item.id === q.id) ? prev : [...prev, q]);
+        if (!showQaPanel) setUnreadQa(n => n + 1);
+        break;
+      }
+      case "global_qa_answered": {
+        const id = String(payload.id);
+        setQaItems(prev =>
+          prev.map((q) =>
+            q.id === id
+              ? {
+                  ...q,
+                  answer: String(payload.answer),
+                  answeredBy: payload.answeredBy ? String(payload.answeredBy) : q.answeredBy,
+                  isPublic: false,
+                }
+              : q,
+          ),
+        );
+        break;
+      }
+      case "global_qa_published": {
+        const id = String(payload.id);
+        setQaItems(prev =>
+          prev.map((q) =>
+            q.id === id
+              ? {
+                  ...q,
+                  answer: String(payload.answer),
+                  answeredBy: payload.answeredBy ? String(payload.answeredBy) : q.answeredBy,
+                  isPublic: true,
+                }
+              : q,
+          ),
+        );
+        break;
+      }
       case "qa_answered": {
         const id = String(payload.id);
         setQaItems(prev => prev.map(q => q.id === id ? { ...q, answer: String(payload.answer), answeredBy: payload.answeredBy ? String(payload.answeredBy) : q.answeredBy, isPublic: Boolean(payload.isPublic) } : q));
@@ -191,12 +253,20 @@ export default function HostGame() {
   const handleSendAnswer = (qId: string) => {
     const answer = (qaAnswers[qId] || "").trim();
     if (!answer) return;
-    emit("answer_live_question", { gameCode, questionId: qId, answer, hostName: hostDisplayName });
+    if (qId.startsWith("global-")) {
+      emit("answer_global_question", { questionId: qId, answer, hostName: hostDisplayName });
+    } else {
+      emit("answer_live_question", { gameCode, questionId: qId, answer, hostName: hostDisplayName });
+    }
     setQaAnswers(prev => ({ ...prev, [qId]: "" }));
   };
 
   const handlePublish = (qId: string) => {
-    emit("publish_qa", { gameCode, questionId: qId });
+    if (qId.startsWith("global-")) {
+      emit("publish_global_question", { questionId: qId });
+    } else {
+      emit("publish_qa", { gameCode, questionId: qId });
+    }
   };
 
   const unansweredQa = qaItems.filter(q => !q.answer).length;
@@ -227,14 +297,14 @@ export default function HostGame() {
         <div className="relative z-10 flex flex-col min-h-screen p-4 md:p-6 gap-5">
           <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 md:p-8 border border-white/20 shadow-2xl">
             <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
-              {/* PIN + Link */}
+              {/* Q&A Link (no name) */}
               <div className="flex flex-col items-center lg:items-start">
-                <p className="text-white/70 font-bold text-sm uppercase tracking-widest mb-1">Join with PIN:</p>
+                <p className="text-white/70 font-bold text-sm uppercase tracking-widest mb-1">Q&A link (no name):</p>
                 <h1 className="text-7xl md:text-8xl font-display font-black text-white tracking-widest drop-shadow-lg">{gameCode}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <Link2 size={13} className="text-white/50 shrink-0" />
-                  <span className="text-white/50 text-xs font-mono truncate max-w-[200px] md:max-w-xs">{joinUrl}</span>
-                  <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors shrink-0">
+                  <span className="text-white/50 text-xs font-mono truncate max-w-[200px] md:max-w-xs">{homeUrl}</span>
+                  <button onClick={() => handleCopyLink(homeUrl)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors shrink-0">
                     {copied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
                   </button>
                 </div>
@@ -243,15 +313,44 @@ export default function HostGame() {
               {/* QR */}
               <div className="flex flex-col items-center gap-2 shrink-0">
                 <div className="bg-white p-3 rounded-2xl shadow-lg">
-                  <QRCodeSVG value={joinUrl} size={120} bgColor="#ffffff" fgColor="#1e1b4b" level="M" />
+                  <QRCodeSVG value={homeUrl} size={120} bgColor="#ffffff" fgColor="#1e1b4b" level="M" />
                 </div>
-                <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Scan to Join</p>
+                <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Scan for Q&A</p>
+              </div>
+
+              {/* Quiz Join (name required) */}
+              <div className="flex flex-col items-center lg:items-start">
+                <p className="text-white/70 font-bold text-sm uppercase tracking-widest mb-1">Quiz join (name required):</p>
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <div className="bg-white p-3 rounded-2xl shadow-lg">
+                    <QRCodeSVG value={quizJoinUrl} size={120} bgColor="#ffffff" fgColor="#1e1b4b" level="M" />
+                  </div>
+                  <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Scan to Join Quiz</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <span className="text-white/50 text-xs font-mono truncate max-w-[250px] md:max-w-xs">{quizJoinUrl}</span>
+                    <button onClick={() => handleCopyLink(quizJoinUrl)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors shrink-0">
+                      {copied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Start */}
-              <button onClick={handleStart} disabled={players.length === 0} className="game-button bg-white text-primary px-10 py-5 rounded-2xl text-2xl font-black shadow-[0_8px_0_0_rgba(0,0,0,0.2)] disabled:opacity-50 shrink-0 w-full lg:w-auto">
-                Start Game
-              </button>
+              <div className="flex items-center gap-4 w-full lg:w-auto">
+                <button
+                  onClick={handleStart}
+                  disabled={players.length === 0}
+                  className="game-button bg-white text-primary px-10 py-5 rounded-2xl text-2xl font-black shadow-[0_8px_0_0_rgba(0,0,0,0.2)] disabled:opacity-50 shrink-0 w-full"
+                >
+                  Start Game
+                </button>
+                <button
+                  onClick={() => setShowQaPanel(true)}
+                  className="inline-flex game-button bg-primary/5 text-primary border border-primary/20 px-8 py-5 rounded-2xl text-2xl font-black shadow-none shrink-0"
+                >
+                  Open Q&A
+                </button>
+              </div>
             </div>
           </div>
 

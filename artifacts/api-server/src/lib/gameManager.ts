@@ -20,6 +20,17 @@ export interface LiveQuestion {
   isPublic: boolean;
 }
 
+export interface GlobalLiveQuestion {
+  id: string;
+  clientId: string;
+  text: string;
+  answer: string | null;
+  answeredBy: string | null;
+  answeredAt: number | null;
+  askedAt: number;
+  isPublic: boolean;
+}
+
 interface GameSession {
   gameCode: string;
   quizId: number;
@@ -41,6 +52,55 @@ interface GameSession {
 }
 
 const gameSessions = new Map<string, GameSession>();
+
+// Q&A that is not tied to a game PIN.
+// Hosts (with valid host access) receive these questions in real-time.
+const globalLiveQuestions: GlobalLiveQuestion[] = [];
+
+export function addGlobalLiveQuestion(clientId: string, text: string): GlobalLiveQuestion | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const q: GlobalLiveQuestion = {
+    id: `global-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    clientId,
+    text: trimmed.slice(0, 300),
+    answer: null,
+    answeredBy: null,
+    answeredAt: null,
+    askedAt: Date.now(),
+    isPublic: false,
+  };
+
+  globalLiveQuestions.push(q);
+  return q;
+}
+
+export function answerGlobalLiveQuestion(questionId: string, answer: string, answeredBy: string): GlobalLiveQuestion | null {
+  const q = globalLiveQuestions.find((x) => x.id === questionId);
+  if (!q) return null;
+
+  const trimmed = answer.trim();
+  if (!trimmed) return null;
+
+  q.answer = trimmed.slice(0, 500);
+  q.answeredBy = answeredBy.trim().slice(0, 40) || "Host";
+  q.answeredAt = Date.now();
+  q.isPublic = false;
+  return q;
+}
+
+export function publishGlobalLiveQuestion(questionId: string): GlobalLiveQuestion | null {
+  const q = globalLiveQuestions.find((x) => x.id === questionId);
+  if (!q || !q.answer) return null;
+
+  q.isPublic = true;
+  return q;
+}
+
+export function getGlobalLiveQuestions(): GlobalLiveQuestion[] {
+  return globalLiveQuestions;
+}
 
 export function getGameSession(gameCode: string): GameSession | undefined {
   return gameSessions.get(gameCode);
@@ -118,7 +178,7 @@ export function setGameQuestions(gameCode: string, questions: GameSession["quest
 
 export function addPlayerToSession(gameCode: string, playerId: number, nickname: string, ws: WebSocket): boolean {
   const session = gameSessions.get(gameCode);
-  if (!session || session.status !== "waiting") return false;
+  if (!session || session.status === "finished") return false;
 
   session.players.set(playerId, {
     playerId,

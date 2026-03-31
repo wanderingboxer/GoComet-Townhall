@@ -27,8 +27,20 @@ import {
   answerLiveQuestion,
   publishLiveQuestion,
   getLiveQuestions,
+  addGlobalLiveQuestion,
+  answerGlobalLiveQuestion,
+  publishGlobalLiveQuestion,
+  getGlobalLiveQuestions,
 } from "../lib/gameManager";
 import { hasHostAccessFromCookieHeader, verifyHostAccessCode } from "../middlewares/hostAccess";
+
+// Global Q&A that is not tied to a game PIN.
+// Hosts are subscribed once they successfully `host_join`.
+const authorizedHostSockets = new Set<WebSocket>();
+
+// Anonymous Q&A clients from the main page.
+// We keep a single active socket per clientId.
+const qaClientSockets = new Map<string, WebSocket>();
 
 interface WsMessage {
   type: string;
@@ -45,6 +57,7 @@ export function setupWebSocket(server: Server): void {
     let currentGameCode: string | null = null;
     let currentPlayerId: number | null = null;
     let isHost = false;
+    let currentQaClientId: string | null = null;
 
     ws.on("message", async (raw) => {
       let msg: WsMessage;
@@ -74,6 +87,7 @@ export function setupWebSocket(server: Server): void {
             }
             currentGameCode = gameCode;
             isHost = true;
+            authorizedHostSockets.add(ws);
             setHostWs(gameCode, ws);
             ws.send(JSON.stringify({
               type: "host_joined",
@@ -92,7 +106,199 @@ export function setupWebSocket(server: Server): void {
                 })),
               },
             }));
+
+            // Send global Q&A questions to hosts too.
+            ws.send(JSON.stringify({
+              type: "global_live_questions_list",
+              payload: {
+                questions: getGlobalLiveQuestions().map((q) => ({
+                  id: q.id,
+                  text: q.text,
+                  answer: q.answer,
+                  answeredBy: q.answeredBy,
+                  askedAt: q.askedAt,
+                  answeredAt: q.answeredAt,
+                  isPublic: q.isPublic,
+                  clientId: q.clientId,
+                })),
+              },
+            }));
             logger.info({ gameCode }, "Host connected to game");
+            break;
+          }
+
+          case "qa_client_join": {
+            const clientId = String(msg.payload.clientId ?? "").trim();
+            if (!clientId) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Missing clientId" } }));
+              return;
+            }
+
+            currentQaClientId = clientId;
+            qaClientSockets.set(clientId, ws);
+
+            const visible = getGlobalLiveQuestions().filter((q) => q.isPublic || q.clientId === clientId);
+            ws.send(
+              JSON.stringify({
+                type: "global_live_questions_list",
+                payload: {
+                  questions: visible.map((q) => ({
+                    id: q.id,
+                    text: q.text,
+                    answer: q.answer,
+                    answeredBy: q.answeredBy,
+                    askedAt: q.askedAt,
+                    answeredAt: q.answeredAt,
+                    isPublic: q.isPublic,
+                    mine: q.clientId === clientId,
+                  })),
+                },
+              }),
+            );
+            break;
+          }
+
+          case "ask_global_question": {
+            if (!currentQaClientId) return;
+            const clientId = currentQaClientId;
+            const text = String(msg.payload.text || "").trim();
+            if (!text) return;
+
+            const q = addGlobalLiveQuestion(clientId, text);
+            if (!q) return;
+
+            // Notify all authorized hosts.
+            for (const hostWs of authorizedHostSockets.values()) {
+              if (hostWs.readyState !== WebSocket.OPEN) continue;
+              hostWs.send(
+                JSON.stringify({
+                  type: "global_new_question",
+                  payload: {
+                    id: q.id,
+                    text: q.text,
+                    answer: null,
+                    answeredBy: null,
+                    askedAt: q.askedAt,
+                    answeredAt: null,
+                    isPublic: false,
+                    clientId: q.clientId,
+                  },
+                }),
+              );
+            }
+
+            // Confirm to the asker (mine).
+            ws.send(
+              JSON.stringify({
+                type: "global_new_question",
+                payload: {
+                  id: q.id,
+                  text: q.text,
+                  answer: null,
+                  answeredBy: null,
+                  askedAt: q.askedAt,
+                  answeredAt: null,
+                  isPublic: false,
+                  mine: true,
+                },
+              }),
+            );
+            break;
+          }
+
+          case "answer_global_question": {
+            if (!isHost) return;
+
+            const questionId = String(msg.payload.questionId || "");
+            const answerText = String(msg.payload.answer || "").trim();
+            const hostName = String(msg.payload.hostName || "").trim().slice(0, 40) || "Host";
+            if (!questionId || !answerText) return;
+
+            const answered = answerGlobalLiveQuestion(questionId, answerText, hostName);
+            if (!answered) return;
+
+            ws.send(
+              JSON.stringify({
+                type: "global_qa_answered",
+                payload: {
+                  id: answered.id,
+                  text: answered.text,
+                  answer: answered.answer,
+                  answeredBy: answered.answeredBy,
+                  askedAt: answered.askedAt,
+                  answeredAt: answered.answeredAt,
+                  isPublic: false,
+                  clientId: answered.clientId,
+                },
+              }),
+            );
+
+            const askerWs = qaClientSockets.get(answered.clientId);
+            if (askerWs?.readyState === WebSocket.OPEN) {
+              askerWs.send(
+                JSON.stringify({
+                  type: "global_qa_answered_private",
+                  payload: {
+                    id: answered.id,
+                    text: answered.text,
+                    answer: answered.answer,
+                    answeredBy: answered.answeredBy,
+                    askedAt: answered.askedAt,
+                    answeredAt: answered.answeredAt,
+                    isPublic: false,
+                    mine: true,
+                  },
+                }),
+              );
+            }
+
+            break;
+          }
+
+          case "publish_global_question": {
+            if (!isHost) return;
+
+            const questionId = String(msg.payload.questionId || "");
+            if (!questionId) return;
+
+            const published = publishGlobalLiveQuestion(questionId);
+            if (!published) return;
+
+            ws.send(
+              JSON.stringify({
+                type: "global_qa_published",
+                payload: {
+                  id: published.id,
+                  text: published.text,
+                  answer: published.answer,
+                  answeredBy: published.answeredBy,
+                  askedAt: published.askedAt,
+                  answeredAt: published.answeredAt,
+                  isPublic: true,
+                  clientId: published.clientId,
+                },
+              }),
+            );
+
+            for (const [clientId, clientWs] of qaClientSockets.entries()) {
+              if (clientWs.readyState !== WebSocket.OPEN) continue;
+              clientWs.send(
+                JSON.stringify({
+                  type: "global_qa_published",
+                  payload: {
+                    id: published.id,
+                    text: published.text,
+                    answer: published.answer,
+                    answeredBy: published.answeredBy,
+                    askedAt: published.askedAt,
+                    answeredAt: published.answeredAt,
+                    isPublic: true,
+                    mine: clientId === published.clientId,
+                  },
+                }),
+              );
+            }
+
             break;
           }
 
@@ -106,8 +312,8 @@ export function setupWebSocket(server: Server): void {
               return;
             }
 
-            if (session.status !== "waiting") {
-              ws.send(JSON.stringify({ type: "error", payload: { message: "Game already started" } }));
+            if (session.status === "finished") {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Game already finished" } }));
               return;
             }
 
@@ -136,6 +342,55 @@ export function setupWebSocket(server: Server): void {
 
             currentGameCode = gameCode;
             currentPlayerId = player.id;
+
+            // Send existing Q&A items so Q&A stays usable even if opened mid-presentation.
+            for (const q of session.liveQuestions) {
+              if (q.isPublic) {
+                sendToPlayer(gameCode, player.id, {
+                  type: "qa_published",
+                  payload: {
+                    id: q.id,
+                    text: q.text,
+                    answer: q.answer,
+                    answeredBy: q.answeredBy,
+                    askedAt: q.askedAt,
+                    answeredAt: q.answeredAt,
+                    isPublic: true,
+                  },
+                });
+                continue;
+              }
+
+              // Private items: only the owner should see them.
+              if (q.playerId !== player.id) continue;
+
+              if (q.answer) {
+                sendToPlayer(gameCode, player.id, {
+                  type: "qa_answered",
+                  payload: {
+                    id: q.id,
+                    text: q.text,
+                    answer: q.answer,
+                    answeredBy: q.answeredBy,
+                    askedAt: q.askedAt,
+                    answeredAt: q.answeredAt,
+                    isPublic: false,
+                  },
+                });
+              } else {
+                sendToPlayer(gameCode, player.id, {
+                  type: "live_question_sent",
+                  payload: {
+                    id: q.id,
+                    text: q.text,
+                    askedAt: q.askedAt,
+                    answer: null,
+                    answeredAt: null,
+                    isPublic: false,
+                  },
+                });
+              }
+            }
 
             ws.send(JSON.stringify({
               type: "joined",
@@ -398,6 +653,13 @@ export function setupWebSocket(server: Server): void {
     });
 
     ws.on("close", () => {
+      if (isHost) {
+        authorizedHostSockets.delete(ws);
+      }
+      if (currentQaClientId) {
+        qaClientSockets.delete(currentQaClientId);
+      }
+
       if (currentGameCode && isHost) {
         removeHostWs(currentGameCode, ws);
       }
