@@ -67,7 +67,7 @@ export default function Dashboard() {
       
       console.log("Dashboard: Checking access", { storedCode, storedName });
       
-      // If we have stored credentials, grant access immediately for testing
+      // If we have stored credentials, grant access immediately
       if (storedCode && storedName) {
         console.log("Dashboard: Found stored credentials, granting access");
         setHasHostAccess(true);
@@ -75,7 +75,7 @@ export default function Dashboard() {
         return;
       }
 
-      // Otherwise, check with server or show login
+      // If no stored credentials, check with server or show login
       try {
         const res = await fetch(apiUrl("/api/host-access/status"), {
           credentials: "include",
@@ -94,6 +94,13 @@ export default function Dashboard() {
     checkAccess();
   }, []); // Run on every mount to check session
 
+  // Preserve session when component unmounts
+  useEffect(() => {
+    return () => {
+      // Don't clear session on unmount
+    };
+  }, []);
+
   // ---------------- QUERIES ----------------
   const { data: quizzes, error } = useListQuizzes({
     query: {
@@ -105,8 +112,8 @@ export default function Dashboard() {
   useEffect(() => {
     if ((error as any)?.status === 401) {
       setHasHostAccess(false);
-      setAuthError("Please re-enter access code.");
-      sessionStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
+      setAuthError("Session expired. Please login again.");
+      // Don't automatically clear session - let user decide
     }
   }, [error]);
 
