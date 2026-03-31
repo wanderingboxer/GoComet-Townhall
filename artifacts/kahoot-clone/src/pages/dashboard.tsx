@@ -52,6 +52,7 @@ export default function Dashboard() {
 
   const { data: quizzes, isLoading, error } = useListQuizzes({
     query: {
+      queryKey: getListQuizzesQueryKey(),
       enabled: hasHostAccess,
     },
   });
