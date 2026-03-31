@@ -95,6 +95,8 @@ export default function QA() {
 
   // SOCKET HANDLER
   useEffect(() => {
+    console.log("QA: Message handler triggered", { hasLastMessage: !!lastMessage, hasHostAccess, connected });
+    
     if (!lastMessage || !hasHostAccess) return;
 
     const { type, payload } = lastMessage;
@@ -136,25 +138,22 @@ export default function QA() {
       }
 
       case "new_live_question":
-      case "global_new_question": {
+      case "global_new_question":
+      case "ask_question": {
         if (!payload) return;
 
-        const q: QAItem = {
-          id: String(payload?.id),
-          text: String(payload?.text),
+        const q: QAItem = { 
+          id: String(payload.id),
+          text: String(payload.text),
           answer: null,
           answeredBy: null,
           isPublic: false,
-          askedAt: Number(payload?.askedAt),
+          askedAt: Number(payload.askedAt),
           answeredAt: null,
-          mine: Boolean(payload?.mine),
+          mine: Boolean(payload?.playerId === playerId),
         };
-
-        setQaItems((prev) =>
-          prev.find((item) => item.id === q.id) ? prev : [...prev, q]
-        );
-
-        setUnreadQa((n) => n + 1);
+        setQaItems(prev => prev.find(item => item.id === q.id) ? prev : [...prev, q]);
+        if (!showQaPanel) setUnreadQa(n => n + 1);
         break;
       }
 
@@ -208,8 +207,18 @@ export default function QA() {
   };
 
   const handleSendAnswer = (qId: string) => {
+    console.log("QA: Send answer attempt", { 
+      qId, 
+      answer: qaAnswers[qId], 
+      connected, 
+      hasHostAccess 
+    });
+    
     const answer = (qaAnswers[qId] || "").trim();
-    if (!answer) return;
+    if (!answer) {
+      console.log("QA: No answer provided, returning");
+      return;
+    }
 
     console.log("QA: Sending answer", { questionId: qId, answer });
 
