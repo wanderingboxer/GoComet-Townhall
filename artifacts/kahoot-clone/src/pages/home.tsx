@@ -119,7 +119,7 @@ export default function Home() {
                 <div className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-1">Live Q&amp;A</p>
                   <p className="text-sm font-semibold text-foreground">
-                    Ask the host questions anonymously during the presentation. Public answers are shown to everyone.
+                    Ask the presenter questions anonymously during the presentation. Public questions are shown to everyone.
                   </p>
                 </div>
                 <Link href="/live-qa" className="block">

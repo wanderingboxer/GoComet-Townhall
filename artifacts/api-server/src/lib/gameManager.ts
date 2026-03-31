@@ -92,9 +92,10 @@ export function answerGlobalLiveQuestion(questionId: string, answer: string, ans
 
 export function publishGlobalLiveQuestion(questionId: string): GlobalLiveQuestion | null {
   const q = globalLiveQuestions.find((x) => x.id === questionId);
-  if (!q || !q.answer) return null;
+  if (!q) return null;
 
   q.isPublic = true;
+  if (!q.answeredAt) q.answeredAt = Date.now();
   return q;
 }
 
@@ -159,9 +160,10 @@ export function publishLiveQuestion(gameCode: string, questionId: string): LiveQ
   if (!session) return null;
 
   const q = session.liveQuestions.find(q => q.id === questionId);
-  if (!q || !q.answer) return null;
+  if (!q) return null;
 
   q.isPublic = true;
+  if (!q.answeredAt) q.answeredAt = Date.now();
   return q;
 }
 

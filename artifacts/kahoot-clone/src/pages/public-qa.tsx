@@ -6,10 +6,7 @@ import { useGameWebSocket } from "@/hooks/use-websocket";
 interface PublicQAItem {
   id: string;
   text: string;
-  answer: string;
-  answeredBy: string | null;
   askedAt: number;
-  answeredAt: number | null;
 }
 
 const QA_CLIENT_ID_KEY = "quizblast_qa_client_id";
@@ -39,38 +36,26 @@ export default function PublicQA() {
 
     if (type === "global_live_questions_list") {
       const questions: PublicQAItem[] = (payload?.questions || [])
-        .filter((q: any) => q.isPublic && q.answer)
+        .filter((q: any) => q.isPublic)
         .map((q: any) => ({
           id: String(q.id),
           text: String(q.text),
-          answer: String(q.answer),
-          answeredBy: q.answeredBy ?? null,
           askedAt: Number(q.askedAt),
-          answeredAt: q.answeredAt ?? null,
         }));
       setItems(questions);
     }
 
     if (type === "global_qa_published") {
       const q = payload as any;
-      if (!q?.id || !q?.answer) return;
+      if (!q?.id) return;
       setItems((prev) => {
-        if (prev.find((item) => item.id === String(q.id))) {
-          return prev.map((item) =>
-            item.id === String(q.id)
-              ? { ...item, answer: String(q.answer), answeredBy: q.answeredBy ?? item.answeredBy, isPublic: true }
-              : item
-          );
-        }
+        if (prev.find((item) => item.id === String(q.id))) return prev;
         return [
           ...prev,
           {
             id: String(q.id),
             text: String(q.text),
-            answer: String(q.answer),
-            answeredBy: q.answeredBy ?? null,
             askedAt: Number(q.askedAt),
-            answeredAt: q.answeredAt ?? Date.now(),
           },
         ];
       });
@@ -87,7 +72,7 @@ export default function PublicQA() {
           </div>
           <div>
             <h1 className="text-xl font-display font-black tracking-tight">Live Q&amp;A</h1>
-            <p className="text-xs text-white/50 font-medium">Public answers • updated in real-time</p>
+            <p className="text-xs text-white/50 font-medium">Public questions • updated in real-time</p>
           </div>
         </div>
 
@@ -97,7 +82,7 @@ export default function PublicQA() {
             {connected ? "Live" : "Connecting…"}
           </div>
           <div className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/5 text-white/50 border border-white/10">
-            {items.length} {items.length === 1 ? "answer" : "answers"}
+            {items.length} {items.length === 1 ? "question" : "questions"}
           </div>
         </div>
       </header>
@@ -116,10 +101,10 @@ export default function PublicQA() {
                 <MessageCircle size={40} className="text-white/20" />
               </div>
               <h2 className="text-3xl font-display font-black text-white/30 mb-2">
-                No public answers yet
+                No public questions yet
               </h2>
               <p className="text-white/20 text-lg">
-                Answers will appear here as the host makes them public
+                Questions will appear here as the presenter shares them
               </p>
               <div className="mt-8 flex gap-2">
                 {[...Array(3)].map((_, i) => (
@@ -143,30 +128,12 @@ export default function PublicQA() {
                   transition={{ type: "spring", damping: 22, stiffness: 280, delay: i === 0 ? 0 : 0 }}
                   className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden"
                 >
-                  {/* Question */}
-                  <div className="px-7 pt-6 pb-4">
-                    <div className="flex items-start gap-3 mb-1">
+                  <div className="px-7 py-6">
+                    <div className="flex items-start gap-3">
                       <span className="mt-1 shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
                         <MessageCircle size={12} className="text-white/50" />
                       </span>
-                      <p className="text-lg font-semibold text-white/80 leading-snug">{q.text}</p>
-                    </div>
-                  </div>
-
-                  {/* Answer */}
-                  <div className="px-7 pb-6">
-                    <div className="rounded-2xl bg-gradient-to-br from-[#0054FF]/20 to-[#5B8FFF]/10 border border-[#0054FF]/30 p-5">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#5B8FFF] mb-3">
-                        Answer
-                      </p>
-                      <p className="text-2xl font-display font-bold text-white leading-snug">
-                        {q.answer}
-                      </p>
-                      {q.answeredBy && (
-                        <p className="mt-3 text-sm text-white/40 font-medium">
-                          — {q.answeredBy}
-                        </p>
-                      )}
+                      <p className="text-2xl font-display font-bold text-white leading-snug">{q.text}</p>
                     </div>
                   </div>
                 </motion.div>

@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Loader2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft, Globe } from "lucide-react";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 
 interface HomeQAItem {
   id: string;
   text: string;
-  answer: string | null;
-  answeredBy: string | null;
-  askedAt: number;
-  answeredAt: number | null;
   isPublic: boolean;
+  askedAt: number;
   mine: boolean;
 }
 
@@ -50,11 +47,8 @@ export default function LiveQA() {
         questions.map((q: any) => ({
           id: String(q.id),
           text: String(q.text),
-          answer: q.answer ?? null,
-          answeredBy: q.answeredBy ?? null,
-          askedAt: Number(q.askedAt),
-          answeredAt: q.answeredAt ?? null,
           isPublic: Boolean(q.isPublic),
+          askedAt: Number(q.askedAt),
           mine: Boolean(q.mine),
         }))
       );
@@ -66,19 +60,7 @@ export default function LiveQA() {
       setQaItems((prev) =>
         prev.find((item) => item.id === String(q.id))
           ? prev
-          : [...prev, { id: String(q.id), text: String(q.text), answer: null, answeredBy: null, askedAt: Number(q.askedAt), answeredAt: null, isPublic: false, mine: Boolean(q.mine) }]
-      );
-    }
-
-    if (type === "global_qa_answered_private") {
-      const q = payload as any;
-      if (!q?.id) return;
-      setQaItems((prev) =>
-        prev.map((item) =>
-          item.id === String(q.id)
-            ? { ...item, answer: String(q.answer), answeredBy: q.answeredBy ?? item.answeredBy, answeredAt: q.answeredAt ?? Date.now(), isPublic: false }
-            : item
-        )
+          : [...prev, { id: String(q.id), text: String(q.text), isPublic: false, askedAt: Number(q.askedAt), mine: Boolean(q.mine) }]
       );
     }
 
@@ -87,9 +69,7 @@ export default function LiveQA() {
       if (!q?.id) return;
       setQaItems((prev) =>
         prev.map((item) =>
-          item.id === String(q.id)
-            ? { ...item, answer: q.answer ?? item.answer, answeredBy: q.answeredBy ?? item.answeredBy, answeredAt: q.answeredAt ?? item.answeredAt, isPublic: true }
-            : item
+          item.id === String(q.id) ? { ...item, isPublic: true } : item
         )
       );
     }
@@ -154,7 +134,7 @@ export default function LiveQA() {
             </button>
           </div>
           <div className="flex justify-between items-center mt-1.5 px-1">
-            <p className="text-[11px] text-muted-foreground">Your question is anonymous — the host sees it privately first.</p>
+            <p className="text-[11px] text-muted-foreground">Your question is anonymous — the presenter may share it on screen.</p>
             <p className="text-[11px] text-muted-foreground">{qaInput.length}/200</p>
           </div>
         </div>
@@ -177,30 +157,22 @@ export default function LiveQA() {
                     className={`rounded-2xl border p-4 ${
                       q.isPublic
                         ? "bg-emerald-50 border-emerald-200"
-                        : q.answer
-                        ? "bg-blue-50 border-blue-200"
                         : "bg-white border-border"
                     }`}
                   >
                     <p className="text-sm font-semibold text-foreground mb-3">{q.text}</p>
-                    {q.answer ? (
-                      <div className={`border-t pt-3 ${q.isPublic ? "border-emerald-200" : "border-blue-200"}`}>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                          {q.isPublic ? "✓ Public answer" : "Private answer — only you can see this"}
+                    <div className={`border-t pt-3 ${q.isPublic ? "border-emerald-200" : "border-border"}`}>
+                      {q.isPublic ? (
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+                          <Globe size={11} /> Shared publicly — shown on screen
                         </p>
-                        <p className="text-sm text-foreground">{q.answer}</p>
-                        {q.answeredBy && (
-                          <p className="text-xs text-muted-foreground mt-1">— {q.answeredBy}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="border-t pt-3 border-border">
+                      ) : (
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-                          Submitted — host will reply soon
+                          Submitted — the presenter may share this on screen
                         </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -208,10 +180,10 @@ export default function LiveQA() {
           </section>
         )}
 
-        {/* Public Q&A */}
+        {/* Public Questions */}
         <section>
           <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-            Public answers {publicItems.length > 0 && <span className="ml-1 text-primary">({publicItems.length})</span>}
+            Public questions {publicItems.length > 0 && <span className="ml-1 text-primary">({publicItems.length})</span>}
           </h2>
           <AnimatePresence>
             {publicItems.length === 0 ? (
@@ -222,8 +194,8 @@ export default function LiveQA() {
                 className="rounded-2xl border border-dashed border-border bg-white/50 p-10 text-center"
               >
                 <MessageCircle size={32} className="text-muted-foreground/20 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-muted-foreground">No public answers yet</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">The host will publish answers here</p>
+                <p className="text-sm font-semibold text-muted-foreground">No public questions yet</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Questions will appear here as the presenter shares them</p>
               </motion.div>
             ) : (
               <div className="space-y-3">
@@ -234,14 +206,13 @@ export default function LiveQA() {
                     animate={{ opacity: 1, y: 0 }}
                     className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
                   >
-                    <p className="text-sm font-semibold text-foreground mb-3">{q.text}</p>
-                    <div className="border-t border-emerald-200 pt-3">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-1.5">Public answer</p>
-                      <p className="text-sm text-foreground">{q.answer}</p>
-                      {q.answeredBy && (
-                        <p className="text-xs text-muted-foreground mt-1">— {q.answeredBy}</p>
-                      )}
+                    <div className="flex items-start gap-2 mb-2">
+                      <Globe size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+                      <p className="text-sm font-semibold text-foreground">{q.text}</p>
                     </div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 pl-5">
+                      Shared publicly
+                    </p>
                   </motion.div>
                 ))}
               </div>
