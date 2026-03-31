@@ -45,3 +45,10 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+LOG_LEVEL = "info"
+NODE_ENV = "development"
+HOST_ACCESS_CODE = "change-this-host-access-code"

@@ -1,81 +1,69 @@
-# Workspace
+# QuizBlast - Kahoot Clone
 
-## Overview
+A full-featured real-time multiplayer quiz game (Kahoot clone) built with React, Express, WebSockets, and PostgreSQL.
 
-pnpm workspace monorepo using TypeScript. QuizBlast - a full-featured Kahoot clone with unlimited quizzes, unlimited questions, 500+ player support, and real-time multiplayer gameplay.
+## Architecture
 
-## Stack
+This is a **pnpm monorepo** with the following packages:
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (ESM bundle)
-- **Frontend**: React + Vite (Tailwind, shadcn/ui, framer-motion, canvas-confetti)
-- **Real-time**: WebSocket (ws) via `/api/ws`
+### Artifacts
+- **`artifacts/kahoot-clone`** — React + Vite frontend, served on port 22993 in dev, previewed at `/`
+- **`artifacts/api-server`** — Express 5 API server with WebSocket support, runs on port 3000 in dev
+- **`artifacts/mockup-sandbox`** — UI prototyping sandbox
 
-## Structure
+### Shared Libraries
+- **`lib/api-spec`** — OpenAPI specification (`openapi.yaml`) + Orval codegen config
+- **`lib/api-client-react`** — Generated React Query hooks from OpenAPI spec
+- **`lib/api-zod`** — Generated Zod schemas from OpenAPI spec
+- **`lib/db`** — Drizzle ORM schema + PostgreSQL connection
 
-```text
-artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   ├── api-server/         # Express API server + WebSocket
-│   └── kahoot-clone/       # React + Vite frontend (QuizBlast)
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts
-├── pnpm-workspace.yaml
-├── tsconfig.base.json
-├── tsconfig.json
-└── package.json
+## Tech Stack
+
+- **Frontend**: React 19, Vite 7, Tailwind CSS 4, shadcn/ui (Radix UI), Framer Motion, Wouter (routing)
+- **Backend**: Express 5, `ws` WebSockets, Pino logger
+- **Database**: PostgreSQL with Drizzle ORM
+- **API**: OpenAPI spec → Orval codegen → React Query hooks + Zod schemas
+
+## Key Features
+
+- Quiz creation and management dashboard
+- Real-time multiplayer game hosting via WebSockets
+- Player join flow using 6-character game codes
+- Live scoreboard and answer tracking
+- Q&A system during games
+
+## Running the Project
+
+The "Start application" workflow runs both services in parallel:
+```
+pnpm --filter @workspace/api-server run dev & PORT=22993 pnpm --filter @workspace/kahoot-clone run dev
 ```
 
-## Features
+Vite proxies all `/api` requests to the Express server at `http://localhost:3000`.
 
-### QuizBlast (Kahoot Clone)
-- **Home page**: Join a game with code + nickname, or host a game
-- **Dashboard**: Create, edit, delete quizzes, launch game sessions
-- **Quiz Editor**: Add/edit/delete questions with 4 answer options, configurable time limit and points
-- **Host Lobby**: Share 6-character game code, see players join in real-time, start game
-- **Host Game**: See current question, answer distribution, timer, skip question, view mini-leaderboard
-- **Player Join**: Enter game code and nickname on any device
-- **Player Lobby**: Wait for host to start, see nickname confirmed on host screen
-- **Player Game**: Answer colored buttons (Red/Blue/Yellow/Green), see correct/incorrect feedback, score/rank
-- **Results/Podium**: Animated 3-place podium with confetti, full leaderboard
+## Environment Variables
 
-### Real-time Communication
-- WebSocket server at `/api/ws`
-- Host messages: host_join, start_game, next_question, end_question
-- Player messages: player_join, submit_answer
-- Server broadcasts: player_joined, game_started, question_started, answer_submitted, question_ended, game_ended, score_update
+Secrets (managed by Replit):
+- `DATABASE_URL` — PostgreSQL connection string (auto-provisioned)
+- `SESSION_SECRET` — Session signing secret
 
-## Database Schema
+Env vars (shared):
+- `LOG_LEVEL` — Logging level (default: `info`)
+- `NODE_ENV` — Environment (default: `development`)
+- `HOST_ACCESS_CODE` — Access code required to host games
 
-- `quizzes` - Quiz title, description
-- `questions` - Question text, options (JSONB), correctOption, timeLimit, points, orderIndex
-- `games` - Game sessions with 6-char game code, quiz reference, status
-- `players` - Player nicknames, scores, connection state
-- `answers` - Player answers with correctness and points earned
+## Database
 
-## Packages
+Uses Replit's built-in PostgreSQL. Schema is managed by Drizzle ORM.
 
-### `artifacts/api-server`
-Express 5 API server with WebSocket support.
-- `pnpm --filter @workspace/api-server run dev` — dev server
+To push schema changes:
+```
+pnpm --filter @workspace/db run push
+```
 
-### `artifacts/kahoot-clone`
-React + Vite frontend (QuizBlast UI)
-- `pnpm --filter @workspace/kahoot-clone run dev` — dev server
+## API Codegen
 
-### `lib/db`
-- `pnpm --filter @workspace/db run push` — push schema changes
-
-### `lib/api-spec`
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate types/hooks
+After modifying `lib/api-spec/openapi.yaml`, regenerate clients:
+```
+pnpm --filter @workspace/api-spec run codegen
+```
