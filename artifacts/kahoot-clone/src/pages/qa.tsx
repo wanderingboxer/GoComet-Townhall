@@ -72,23 +72,6 @@ export default function QA() {
     checkAccess();
   }, [setLocation]);
 
-  const searchString = useSearch();
-  const [, params] = useRoute("/host/:gameCode") || [, null];
-
-  // Get game code from URL or sessionStorage
-  let urlGameCode = "";
-  if (searchString) {
-    const searchUrl = new URLSearchParams(searchString);
-    urlGameCode = searchUrl.get('game') || "";
-  }
-  
-  const sessionGameCode = typeof window !== "undefined" 
-    ? window.sessionStorage.getItem("quizblast_game_code") || ""
-    : "";
-
-  // Use URL game code if available, otherwise fall back to session
-  const gameCode = urlGameCode || sessionGameCode || params?.gameCode || "";
-
   const hostName =
     typeof window !== "undefined"
       ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY) || "Host"
@@ -98,13 +81,17 @@ export default function QA() {
   useEffect(() => {
     if (!hasHostAccess || !connected) return;
 
+    const hostName =
+      typeof window !== "undefined"
+        ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY) || "Host"
+        : "Host";
 
-    console.log("QA: Joining as host", { gameCode, accessKey: getStoredHostAccessCode(), hostName });
-    emit("host_join", { gameCode, accessKey: getStoredHostAccessCode(), hostName });
+    console.log("QA: Joining as host", { accessKey: getStoredHostAccessCode(), hostName });
+    emit("host_join", { gameCode: "qa-room", accessKey: getStoredHostAccessCode(), hostName });
 
     console.log("QA: Requesting questions");
     emit("get_live_questions", {});
-  }, [hasHostAccess, connected, emit, searchString]);
+  }, [hasHostAccess, connected, emit]);
 
   // SOCKET HANDLER
   useEffect(() => {
