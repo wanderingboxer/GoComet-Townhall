@@ -250,143 +250,90 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] items-start">
-          {/* Left Column - Stats */}
+        <div className="flex items-end justify-between mb-6">
           <div>
-            <div className="rounded-[28px] border border-primary/15 bg-white p-6 shadow-sm">
-              <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                <Settings size={20} />
-              </div>
-              <h2 className="text-2xl font-display font-black text-foreground">Dashboard Overview</h2>
-              <p className="mt-2 text-sm text-muted-foreground leading-6">
-                Manage your quizzes, host sessions, and monitor engagement analytics.
-              </p>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="mt-8 space-y-4">
-              <div className="bg-white rounded-2xl border border-border p-6 shadow-lg">
-                <h3 className="text-lg font-display font-bold text-foreground mb-4">Quick Stats</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Total Quizzes</span>
-                    <span className="text-lg font-bold text-foreground">{quizzes?.length || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Total Questions</span>
-                    <span className="text-lg font-bold text-foreground">
-                      {quizzes?.reduce((sum, quiz) => sum + quiz.questionCount, 0) || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Active Sessions</span>
-                    <span className="text-lg font-bold text-green-600">0</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Q&A Management */}
-              <div className="bg-white rounded-2xl border border-green-200 bg-green-50 p-6 shadow-lg">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-green-100 border-green-200 p-3 flex items-center justify-center">
-                    <MessageCircle size={24} className="text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-display font-black text-foreground">Q&A Management</h3>
-                    <p className="text-sm text-muted-foreground">View and respond to questions from all your live sessions</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setLocation("/qa")}
-                  className="w-full game-button bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-[0_8px_20px_rgba(0,84,255,0.2)] hover:bg-primary/90 transition-colors"
-                >
-                  <Settings className="text-white" size={20} />
-                  <span>Manage Q&A</span>
-                </button>
-              </div>
-            </div>
+            <h2 className="text-3xl font-display font-black text-foreground">Your quiz library</h2>
+            <p className="text-muted-foreground mt-1 font-medium">Edit, host, and maintain your session-ready content</p>
           </div>
-
-          {/* Right Column - Quiz Library */}
-          <div>
-            <div className="flex items-end justify-between mb-6">
-              <div>
-                <h2 className="text-3xl font-display font-black text-foreground">Your quiz library</h2>
-                <p className="text-muted-foreground mt-1 font-medium">Edit, host, and maintain your session-ready content</p>
-              </div>
-              <button
-                onClick={handleCreateNew}
-                className="game-button brand-gradient text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_8px_20px_rgba(0,84,255,0.2)]"
-              >
-                <Plus /> Create Quiz
-              </button>
-            </div>
-
-            {quizzes?.length === 0 ? (
-              <div className="bg-white border-2 border-dashed border-border rounded-3xl p-16 text-center flex flex-col items-center shadow-sm">
-                <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
-                  <Settings className="text-muted-foreground" size={40} />
-                </div>
-                <h2 className="text-2xl font-display font-bold text-foreground mb-2">No quizzes yet</h2>
-                <p className="text-muted-foreground mb-6 max-w-sm">
-                  Create your first quiz to get started. Add questions, configure options, and launch engaging live sessions.
-                </p>
-                <button
-                  onClick={handleCreateNew}
-                  className="game-button brand-gradient text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-[0_8px_24px_rgba(0,84,255,0.24)]"
-                >
-                  <Plus /> Create Quiz
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quizzes?.map((quiz) => (
-                  <div key={quiz.id} className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all group flex flex-col">
-                    <div className="h-32 bg-gradient-to-br from-[#0C214C] via-[#1A316C] to-[#0054FF] flex items-center justify-center relative">
-                      <span className="text-5xl font-display font-black text-white/25">{quiz.questionCount}Q</span>
-                      <div className="absolute inset-0 bg-[#0C214C]/15 opacity-100 flex items-center justify-center gap-4">
-                        <button
-                          onClick={() => handleLaunchSession(quiz.id)}
-                          className="game-button bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(12,33,76,0.2)] hover:-translate-y-1"
-                          title="Host Game"
-                        >
-                          <Play fill="currentColor" size={22} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-6 flex-1 flex flex-col">
-                      <h3 className="text-xl font-display font-bold text-foreground line-clamp-1">{quiz.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1 mb-4 flex-1 line-clamp-2">{quiz.description || "No description"}</p>
-
-                      <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          {format(new Date(quiz.createdAt), 'MMM d, yyyy')}
-                        </span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setLocation(`/quiz/${quiz.id}/edit`)}
-                            className="p-2 rounded-xl border border-border text-foreground hover:bg-muted transition-colors"
-                            title="Edit Quiz"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => deleteQuiz.mutate({ id: quiz.id })}
-                            className="p-2 rounded-xl border border-border text-destructive hover:bg-destructive/10 transition-colors"
-                            title="Delete Quiz"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setLocation("/qa")}
+              className="game-button bg-primary text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_8px_20px_rgba(0,84,255,0.2)] hover:bg-primary/90 transition-colors"
+            >
+              <MessageCircle size={20} />
+              <span>Manage Q&A</span>
+            </button>
+            <button
+              onClick={handleCreateNew}
+              className="game-button brand-gradient text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-[0_8px_20px_rgba(0,84,255,0.2)]"
+            >
+              <Plus /> Create Quiz
+            </button>
           </div>
         </div>
+
+        {quizzes?.length === 0 ? (
+          <div className="bg-white border-2 border-dashed border-border rounded-3xl p-16 text-center flex flex-col items-center shadow-sm">
+            <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-6">
+              <Settings className="text-muted-foreground" size={40} />
+            </div>
+            <h2 className="text-2xl font-display font-bold text-foreground mb-2">No quizzes yet</h2>
+            <p className="text-muted-foreground mb-6 max-w-sm">
+              Create your first quiz to get started. Add questions, configure options, and launch engaging live sessions.
+            </p>
+            <button
+              onClick={handleCreateNew}
+              className="game-button brand-gradient text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-[0_8px_24px_rgba(0,84,255,0.24)]"
+            >
+              <Plus /> Create Quiz
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {quizzes?.map((quiz) => (
+              <div key={quiz.id} className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all group flex flex-col">
+                <div className="h-32 bg-gradient-to-br from-[#0C214C] via-[#1A316C] to-[#0054FF] flex items-center justify-center relative">
+                  <span className="text-5xl font-display font-black text-white/25">{quiz.questionCount}Q</span>
+                  <div className="absolute inset-0 bg-[#0C214C]/15 opacity-100 flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => handleLaunchSession(quiz.id)}
+                      className="game-button bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(12,33,76,0.2)] hover:-translate-y-1"
+                      title="Host Game"
+                    >
+                      <Play fill="currentColor" size={22} />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  <h3 className="text-xl font-display font-bold text-foreground line-clamp-1">{quiz.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-1 mb-4 flex-1 line-clamp-2">{quiz.description || "No description"}</p>
+
+                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {format(new Date(quiz.createdAt), 'MMM d, yyyy')}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setLocation(`/quiz/${quiz.id}/edit`)}
+                        className="p-2 rounded-xl border border-border text-foreground hover:bg-muted transition-colors"
+                        title="Edit Quiz"
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        onClick={() => deleteQuiz.mutate({ id: quiz.id })}
+                        className="p-2 rounded-xl border border-border text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Delete Quiz"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <footer className="mt-12 border-t border-border bg-white/50 backdrop-blur-sm">

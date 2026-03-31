@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Settings, Users, Clock, CheckCircle2, X, LogOut } from "lucide-react";
+import { MessageCircle, Send, Settings, Users, Clock, CheckCircle2, X, LogOut, Shield } from "lucide-react";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 import { LoadingSpinner } from "@/components/game-ui";
+
+const HOST_ACCESS_STORAGE_KEY = "quizblast_host_access_code";
+const HOST_DISPLAY_NAME_STORAGE_KEY = "quizblast_host_display_name";
 
 interface QAItem {
   id: string;
@@ -24,6 +27,89 @@ export default function QA() {
   const [qaAnswers, setQaAnswers] = useState<Record<string, string>>({});
   const [showQaPanel, setShowQaPanel] = useState(true);
   const [unreadQa, setUnreadQa] = useState(0);
+
+  // Host access state
+  const [hasHostAccess, setHasHostAccess] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [authError, setAuthError] = useState("");
+
+  const apiOrigin = import.meta.env.VITE_API_ORIGIN?.trim();
+  const apiUrl = (path: string) => (apiOrigin ? `${apiOrigin}${path}` : path);
+
+  const getStoredHostAccessCode = () =>
+    typeof window !== "undefined"
+      ? window.sessionStorage.getItem(HOST_ACCESS_STORAGE_KEY) || ""
+      : "";
+
+  const getHostAccessHeaders = (overrideCode?: string) => {
+    const code = overrideCode ?? getStoredHostAccessCode();
+    return code ? { "x-host-access-code": code } : undefined;
+  };
+
+  // Check host access on mount
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const res = await fetch(apiUrl("/api/host-access/status"), {
+          credentials: "include",
+          headers: getHostAccessHeaders(),
+        });
+        const data = await res.json();
+        setHasHostAccess(Boolean(data.authenticated));
+        if (!data.authenticated) {
+          setAuthError("Host access required. Please login from dashboard.");
+          // Redirect to dashboard after a short delay
+          setTimeout(() => setLocation("/dashboard"), 2000);
+        }
+      } catch {
+        setAuthError("Could not verify host access.");
+        setTimeout(() => setLocation("/dashboard"), 2000);
+      } finally {
+        setCheckingAccess(false);
+      }
+    };
+
+    checkAccess();
+  }, [setLocation]);
+
+  const handleLogout = async () => {
+    await fetch(apiUrl("/api/host-access/logout"), {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
+      window.sessionStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
+    }
+    setLocation("/dashboard");
+  };
+
+  if (checkingAccess) {
+    return <LoadingSpinner message="Checking host access..." />;
+  }
+
+  if (!hasHostAccess) {
+    return (
+      <div className="min-h-screen bg-muted/40 px-4 flex items-center justify-center">
+        <div className="w-full max-w-md bg-white border border-border rounded-[28px] p-8 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5">
+            <Shield size={24} />
+          </div>
+          <h1 className="text-3xl font-display font-black text-foreground">Access Denied</h1>
+          <p className="mt-2 text-sm text-muted-foreground leading-6">
+            {authError || "Host access required. Please login from dashboard."}
+          </p>
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="w-full mt-6 game-button brand-gradient text-white px-5 py-3 rounded-xl font-bold"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // SOCKET HANDLER
   useEffect(() => {
@@ -168,14 +254,6 @@ export default function QA() {
   const handlePublish = (qId: string) => {
     emit("publish_question", { questionId: qId });
     setQaItems(prev => prev.map(q => q.id === qId ? { ...q, isPublic: true } : q));
-  };
-
-  const handleLogout = async () => {
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem("quizblast_host_access_code");
-      window.sessionStorage.removeItem("quizblast_host_display_name");
-    }
-    setLocation("/dashboard");
   };
 
   if (typeof window === "undefined") return <LoadingSpinner message="Loading Q&A Management..." />;
