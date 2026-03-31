@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useLocation, useSearch, useRoute } from "wouter";
+import { useLocation, useSearch, useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
-import { MessageCircle, Send, Clock, CheckCircle2, LogOut, Shield, Settings } from "lucide-react";
+import { MessageCircle, Send, Clock, CheckCircle2, LogOut, Shield, ArrowLeft } from "lucide-react";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 import { LoadingSpinner } from "@/components/game-ui";
 
@@ -268,23 +268,21 @@ export default function QA() {
       <header className="bg-white border-b border-border px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <MessageCircle size={24} className="text-primary" />
-            <h1 className="text-2xl font-display font-bold text-foreground">Q&A Management</h1>
+            <Link href="/dashboard">
+              <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <ArrowLeft size={16} /> Dashboard
+              </button>
+            </Link>
+            <div className="w-px h-5 bg-border" />
+            <MessageCircle size={20} className="text-primary" />
+            <h1 className="text-xl font-display font-bold text-foreground">Q&A Management</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowQaPanel(!showQaPanel)}
-              className="p-2 rounded-lg hover:bg-muted transition-colors"
-            >
-              <Settings size={20} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut size={16} /> Sign out
+          </button>
         </div>
       </header>
 
