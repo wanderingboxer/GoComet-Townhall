@@ -88,42 +88,6 @@ export default function QA() {
     // Request initial questions list
     emit("get_live_questions", {});
     
-    // Add test questions to verify functionality (remove in production)
-    setTimeout(() => {
-      setQaItems([
-        {
-          id: "test-1",
-          text: "How do I submit a question?",
-          answer: null,
-          answeredBy: null,
-          isPublic: false,
-          askedAt: Date.now() - 3000,
-          answeredAt: null,
-          mine: false,
-        },
-        {
-          id: "test-2", 
-          text: "What happens when I make a question public?",
-          answer: "When you make a question public, all participants can see both the question and your answer.",
-          answeredBy: "Host",
-          isPublic: false,
-          askedAt: Date.now() - 6000,
-          answeredAt: Date.now() - 5000,
-          mine: false,
-        },
-        {
-          id: "test-3",
-          text: "Can I edit my answers?",
-          answer: "Yes, you can update your answers anytime before publishing them publicly.",
-          answeredBy: "Host",
-          isPublic: true,
-          askedAt: Date.now() - 9000,
-          answeredAt: Date.now() - 8000,
-          mine: false,
-        }
-      ]);
-    }, 1000);
-    
   }, [hasHostAccess, connected, emit]);
 
   // SOCKET HANDLER - Always call this useEffect, no conditions

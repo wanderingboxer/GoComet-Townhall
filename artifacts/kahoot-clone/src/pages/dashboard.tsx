@@ -65,14 +65,27 @@ export default function Dashboard() {
         ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)
         : null;
       
-      // If we have stored credentials, set access immediately
+      // If we have stored credentials, verify with server to ensure they're still valid
       if (storedCode && storedName) {
-        setHasHostAccess(true);
-        setCheckingAccess(false);
-        return;
+        try {
+          const res = await fetch(apiUrl("/api/host-access/status"), {
+            credentials: "include",
+            headers: getHostAccessHeaders(),
+          });
+          const data = await res.json();
+          if (data.authenticated) {
+            setHasHostAccess(true);
+            setCheckingAccess(false);
+            return;
+          }
+        } catch {
+          // If server check fails, clear invalid session
+          sessionStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
+          sessionStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
+        }
       }
 
-      // Otherwise, check with server
+      // If no valid session, check with server or show login
       try {
         const res = await fetch(apiUrl("/api/host-access/status"), {
           credentials: "include",
@@ -88,7 +101,7 @@ export default function Dashboard() {
     };
 
     checkAccess();
-  }, []);
+  }, []); // Run on every mount to check session
 
   // ---------------- QUERIES ----------------
   const { data: quizzes, error } = useListQuizzes({
