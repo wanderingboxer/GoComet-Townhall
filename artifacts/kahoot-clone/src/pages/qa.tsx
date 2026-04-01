@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
-import { MessageCircle, Clock, CheckCircle2, LogOut, Shield, ArrowLeft, Globe } from "lucide-react";
+import { MessageCircle, Clock, CheckCircle2, LogOut, Shield, ArrowLeft, Globe, Monitor } from "lucide-react";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 import { LoadingSpinner } from "@/components/game-ui";
 
@@ -189,12 +189,22 @@ export default function QA() {
             <MessageCircle size={20} className="text-primary" />
             <h1 className="text-xl font-display font-bold text-foreground">Q&A Management</h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut size={16} /> Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/public-qa"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition-colors"
+            >
+              <Monitor size={16} /> Open Display Screen
+            </a>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut size={16} /> Sign out
+            </button>
+          </div>
         </div>
       </header>
 
