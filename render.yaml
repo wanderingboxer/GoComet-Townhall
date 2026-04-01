@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: quiz-hub-frontend
+    env: static
+    buildCommand: pnpm install && pnpm --filter @workspace/kahoot-clone run build
+    staticPublishPath: ./artifacts/kahoot-clone/dist/public
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
