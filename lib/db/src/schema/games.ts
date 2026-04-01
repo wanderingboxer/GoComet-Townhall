@@ -6,7 +6,7 @@ import { quizzesTable, questionsTable } from "./quizzes";
 export const gamesTable = pgTable("games", {
   id: serial("id").primaryKey(),
   gameCode: text("game_code").notNull().unique(),
-  quizId: integer("quiz_id").notNull().references(() => quizzesTable.id),
+  quizId: integer("quiz_id").notNull().references(() => quizzesTable.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("waiting"),
   currentQuestionIndex: integer("current_question_index"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

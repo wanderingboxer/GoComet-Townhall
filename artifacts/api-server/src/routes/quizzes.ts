@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, count, sql } from "drizzle-orm";
-import { db, quizzesTable, questionsTable } from "@workspace/db";
+import { db, quizzesTable, questionsTable, gamesTable } from "@workspace/db";
 import {
   CreateQuizBody,
   UpdateQuizBody,
@@ -132,17 +132,24 @@ router.delete("/quizzes/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [quiz] = await db
-    .delete(quizzesTable)
-    .where(eq(quizzesTable.id, params.data.id))
-    .returning();
+  try {
+    // Remove related games first so the FK constraint doesn't block quiz deletion
+    await db.delete(gamesTable).where(eq(gamesTable.quizId, params.data.id));
 
-  if (!quiz) {
-    res.status(404).json({ error: "Quiz not found" });
-    return;
+    const [quiz] = await db
+      .delete(quizzesTable)
+      .where(eq(quizzesTable.id, params.data.id))
+      .returning();
+
+    if (!quiz) {
+      res.status(404).json({ error: "Quiz not found" });
+      return;
+    }
+
+    res.sendStatus(204);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete quiz" });
   }
-
-  res.sendStatus(204);
 });
 
 router.post("/quizzes/:id/questions", async (req, res): Promise<void> => {
