@@ -191,7 +191,7 @@ export default function QA() {
           </div>
           <div className="flex items-center gap-2">
             <a
-              href="/public-qa"
+              href={`${import.meta.env.BASE_URL}public-qa`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition-colors"
