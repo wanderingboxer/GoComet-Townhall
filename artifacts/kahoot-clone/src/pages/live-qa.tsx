@@ -154,13 +154,7 @@ export default function LiveQA() {
                     animate={{ opacity: 1, y: 0 }}
                     className="rounded-2xl border p-4 bg-white border-border"
                   >
-                    <p className="text-sm font-semibold text-foreground mb-3">{q.text}</p>
-                    <div className="border-t pt-3 border-border">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-                        Submitted — waiting for the presenter
-                      </p>
-                    </div>
+                    <p className="text-sm font-semibold text-foreground">{q.text}</p>
                   </motion.div>
                 ))}
               </AnimatePresence>
