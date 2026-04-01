@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, ArrowLeft, Globe } from "lucide-react";
+import { MessageCircle, Send, ArrowLeft } from "lucide-react";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 
 interface HomeQAItem {
@@ -82,7 +82,6 @@ export default function LiveQA() {
   };
 
   const myQuestions = qaItems.filter((q) => q.mine);
-  const publicItems = qaItems.filter((q) => q.isPublic);
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
@@ -153,25 +152,9 @@ export default function LiveQA() {
                     key={q.id}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-2xl border p-4 ${
-                      q.isPublic
-                        ? "bg-emerald-50 border-emerald-200"
-                        : "bg-white border-border"
-                    }`}
+                    className="rounded-2xl border p-4 bg-white border-border"
                   >
-                    <p className="text-sm font-semibold text-foreground mb-3">{q.text}</p>
-                    <div className={`border-t pt-3 ${q.isPublic ? "border-emerald-200" : "border-border"}`}>
-                      {q.isPublic ? (
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                          <Globe size={11} /> Shared publicly — shown on screen
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-                          Submitted — the presenter may share this on screen
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-sm font-semibold text-foreground">{q.text}</p>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -179,50 +162,10 @@ export default function LiveQA() {
           </section>
         )}
 
-        {/* Public Questions */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-            Public questions {publicItems.length > 0 && <span className="ml-1 text-primary">({publicItems.length})</span>}
-          </h2>
-          <AnimatePresence>
-            {publicItems.length === 0 ? (
-              <motion.div
-                key="empty-public"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="rounded-2xl border border-dashed border-border bg-white/50 p-10 text-center"
-              >
-                <MessageCircle size={32} className="text-muted-foreground/20 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-muted-foreground">No public questions yet</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Questions will appear here as the presenter shares them</p>
-              </motion.div>
-            ) : (
-              <div className="space-y-3">
-                {[...publicItems].reverse().map((q) => (
-                  <motion.div
-                    key={q.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
-                  >
-                    <div className="flex items-start gap-2 mb-2">
-                      <Globe size={14} className="text-emerald-600 mt-0.5 shrink-0" />
-                      <p className="text-sm font-semibold text-foreground">{q.text}</p>
-                    </div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 pl-5">
-                      Shared publicly
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </AnimatePresence>
-        </section>
-
-        {qaItems.length === 0 && (
+        {myQuestions.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <MessageCircle size={40} className="text-muted-foreground/15 mb-3" />
-            <p className="text-sm font-semibold text-muted-foreground">No questions yet — be the first!</p>
+            <p className="text-sm font-semibold text-muted-foreground">Ask a question above to get started</p>
           </div>
         )}
       </main>
