@@ -35,7 +35,13 @@ export function CountdownBar({
   );
 }
 
-export function AnswerGrid({ 
+function getOptionTextSize(text: string): string {
+  if (text.length <= 20) return "text-2xl sm:text-3xl md:text-4xl";
+  if (text.length <= 40) return "text-xl sm:text-2xl md:text-3xl";
+  return "text-base sm:text-lg md:text-2xl";
+}
+
+export function AnswerGrid({
   options, 
   onSelect, 
   disabled,
@@ -98,7 +104,10 @@ export function AnswerGrid({
               <div className="absolute top-4 left-4 p-3 bg-black/15 rounded-xl">
                 <Icon size={32} className="text-white drop-shadow-md" strokeWidth={3} />
               </div>
-              <span className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-center mt-8 drop-shadow-lg text-stroke">
+              <span className={cn(
+                "font-display font-bold text-center drop-shadow-lg text-stroke leading-tight break-words px-2 w-full",
+                getOptionTextSize(option)
+              )}>
                 {option}
               </span>
             </motion.button>
