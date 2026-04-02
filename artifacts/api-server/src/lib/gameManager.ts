@@ -56,6 +56,16 @@ const gameSessions = new Map<string, GameSession>();
 // Q&A that is not tied to a game PIN.
 // Hosts (with valid host access) receive these questions in real-time.
 const globalLiveQuestions: GlobalLiveQuestion[] = [];
+const MAX_GLOBAL_QA = 500;
+
+// Periodically remove global Q&A entries older than 24 hours to prevent unbounded growth.
+setInterval(() => {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  let i = globalLiveQuestions.length;
+  while (i--) {
+    if (globalLiveQuestions[i].askedAt < cutoff) globalLiveQuestions.splice(i, 1);
+  }
+}, 60 * 60 * 1000);
 
 export function addGlobalLiveQuestion(clientId: string, text: string): GlobalLiveQuestion | null {
   const trimmed = text.trim();
@@ -71,6 +81,16 @@ export function addGlobalLiveQuestion(clientId: string, text: string): GlobalLiv
     askedAt: Date.now(),
     isPublic: false,
   };
+
+  // If at capacity, evict already-answered entries first.
+  if (globalLiveQuestions.length >= MAX_GLOBAL_QA) {
+    let i = globalLiveQuestions.length;
+    while (i--) {
+      if (globalLiveQuestions[i].answer !== null) globalLiveQuestions.splice(i, 1);
+    }
+  }
+  // Still at capacity after eviction — reject the new question.
+  if (globalLiveQuestions.length >= MAX_GLOBAL_QA) return null;
 
   globalLiveQuestions.push(q);
   return q;
@@ -294,7 +314,11 @@ export function startQuestion(gameCode: string, onTimeout: (gameCode: string) =>
     clearTimeout(session.questionTimer);
   }
 
+  const capturedIndex = session.currentQuestionIndex;
   session.questionTimer = setTimeout(() => {
+    // Guard against the timer firing after the question was already ended or the game finished.
+    const s = gameSessions.get(gameCode);
+    if (!s || s.status !== "active" || s.currentQuestionIndex !== capturedIndex) return;
     onTimeout(gameCode);
   }, question.timeLimit * 1000 + 1000);
 
@@ -359,7 +383,7 @@ export function getAnsweredCount(gameCode: string): { answeredCount: number; tot
 
 export function endQuestion(gameCode: string): void {
   const session = gameSessions.get(gameCode);
-  if (!session) return;
+  if (!session || session.status !== "active") return;
 
   if (session.questionTimer) {
     clearTimeout(session.questionTimer);
