@@ -431,6 +431,27 @@ export function setupWebSocket(server: Server): void {
               payload: { playerId: player.id, nickname, gameCode },
             }));
 
+            // If the game is already in progress, immediately send the current question
+            // so the player doesn't sit in lobby state for the rest of that question
+            if (session.status === "active" && session.currentQuestionIndex >= 0) {
+              const currentQ = session.questions[session.currentQuestionIndex];
+              const elapsed = Date.now() - session.questionStartTime;
+              const remainingTime = Math.max(1, currentQ.timeLimit - Math.floor(elapsed / 1000));
+              sendToPlayer(gameCode, player.id, {
+                type: "question_started",
+                payload: {
+                  questionIndex: session.currentQuestionIndex,
+                  question: {
+                    text: currentQ.text,
+                    options: currentQ.options,
+                    timeLimit: remainingTime,
+                    points: currentQ.points,
+                  },
+                  totalQuestions: session.questions.length,
+                },
+              });
+            }
+
             const playerCount = getSessionPlayerCount(gameCode);
             broadcast(gameCode, {
               type: "player_joined",

@@ -43,6 +43,14 @@ export default function PlayerGame() {
     if (!nickname) setLocation("/");
   }, [nickname, setLocation]);
 
+  // Reset join flag and playerId on disconnect so the player auto-rejoins on reconnect
+  useEffect(() => {
+    if (!connected) {
+      hasJoined.current = false;
+      setPlayerId(null);
+    }
+  }, [connected]);
+
   useEffect(() => {
     if (connected && gameCode && nickname && !hasJoined.current) {
       hasJoined.current = true;
@@ -76,9 +84,16 @@ export default function PlayerGame() {
 
       case "question_ended": {
         const lb = (payload.leaderboard as LeaderboardEntry[]) || [];
+        const correctOpt = payload.correctOption as number;
         setLeaderboard(lb);
-        if (gameState === "answering") {
-          setLastResult((prev) => prev ?? { isCorrect: false, points: 0, score: 0, rank: lb.find((e) => e.nickname === nickname)?.rank ?? 0 });
+        if (gameState === "answering" || gameState === "waiting") {
+          setLastResult((prev) => {
+            if (prev) return prev; // score_update already arrived, keep it
+            // score_update hasn't arrived yet — compute correctness from correctOption
+            const isCorrect = selectedOption !== null && selectedOption === correctOpt;
+            const myEntry = lb.find((e) => e.nickname === nickname);
+            return { isCorrect, points: 0, score: myEntry?.score ?? 0, rank: myEntry?.rank ?? 0 };
+          });
           setGameState("result");
         }
         // Auto-advance to leaderboard after 3s
