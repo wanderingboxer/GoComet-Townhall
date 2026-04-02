@@ -66,7 +66,18 @@ export function setupWebSocket(server: Server): void {
     let isHost = false;
     let currentQaClientId: string | null = null;
 
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+    let lastActivityTime = Date.now();
+    const inactivityChecker = setInterval(() => {
+      if (Date.now() - lastActivityTime > INACTIVITY_TIMEOUT_MS) {
+        logger.info("Terminating idle WebSocket connection");
+        clearInterval(inactivityChecker);
+        ws.terminate();
+      }
+    }, 5 * 60 * 1000);
+
     ws.on("message", async (raw) => {
+      lastActivityTime = Date.now();
       // Token-bucket rate limiting per connection.
       const now = Date.now();
       let bucket = rateLimitMap.get(ws);
@@ -461,7 +472,20 @@ export function setupWebSocket(server: Server): void {
 
             const added = addPlayerToSession(gameCode, player.id, nickname, ws);
             if (!added) {
+              await db.delete(playersTable).where(eq(playersTable.id, player.id));
               ws.send(JSON.stringify({ type: "error", payload: { message: "Could not join game" } }));
+              return;
+            }
+
+            // Re-check nickname uniqueness after insert to guard against concurrent joins.
+            const sessionAfterAdd = getGameSession(gameCode);
+            const hasDuplicate = sessionAfterAdd && Array.from(sessionAfterAdd.players.values()).some(
+              p => p.nickname.toLowerCase() === nickname.toLowerCase() && p.playerId !== player.id
+            );
+            if (hasDuplicate) {
+              removePlayer(gameCode, player.id);
+              await db.delete(playersTable).where(eq(playersTable.id, player.id));
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Nickname already taken in this game" } }));
               return;
             }
 
@@ -614,9 +638,17 @@ export function setupWebSocket(server: Server): void {
 
             const gameCode = currentGameCode;
             const playerId = currentPlayerId;
-            const questionIndex = Number(msg.payload.questionIndex);
-            const selectedOption = Number(msg.payload.selectedOption);
-            const timeToAnswer = Number(msg.payload.timeToAnswer);
+            const questionIndex = msg.payload.questionIndex;
+            const selectedOption = msg.payload.selectedOption;
+            const timeToAnswer = msg.payload.timeToAnswer;
+            if (
+              !Number.isInteger(questionIndex) || questionIndex < 0 ||
+              !Number.isInteger(selectedOption) || selectedOption < 0 ||
+              typeof timeToAnswer !== "number" || timeToAnswer < 0
+            ) return;
+
+            // Capture original score before submitAnswer modifies it (needed for rollback on DB failure).
+            const originalScore = getGameSession(gameCode)?.players.get(playerId)?.score ?? 0;
 
             const result = submitAnswer(gameCode, playerId, questionIndex, selectedOption, timeToAnswer);
             if (!result) return;
@@ -625,9 +657,9 @@ export function setupWebSocket(server: Server): void {
             if (!session) return;
 
             // Bounds-check both indices before using them.
-            if (questionIndex < 0 || questionIndex >= session.questions.length) return;
+            if (questionIndex >= session.questions.length) return;
             const question = session.questions[questionIndex];
-            if (selectedOption < 0 || selectedOption >= question.options.length) return;
+            if (selectedOption >= question.options.length) return;
 
             // Capture score synchronously before any async DB work — the player may disconnect
             // during the await below, which would remove them from session and return undefined.
@@ -635,20 +667,26 @@ export function setupWebSocket(server: Server): void {
 
             const [game] = await db.select().from(gamesTable).where(eq(gamesTable.gameCode, gameCode));
             if (game) {
-              await db.transaction(async (tx) => {
-                await tx.insert(answersTable).values({
-                  gameId: game.id,
-                  playerId,
-                  questionId: question.id,
-                  selectedOption,
-                  isCorrect: result.isCorrect ? 1 : 0,
-                  pointsEarned: result.pointsEarned,
-                  timeToAnswer,
+              try {
+                await db.transaction(async (tx) => {
+                  await tx.insert(answersTable).values({
+                    gameId: game.id,
+                    playerId,
+                    questionId: question.id,
+                    selectedOption,
+                    isCorrect: result.isCorrect ? 1 : 0,
+                    pointsEarned: result.pointsEarned,
+                    timeToAnswer,
+                  });
+                  await tx.update(playersTable)
+                    .set({ score: finalScore })
+                    .where(eq(playersTable.id, playerId));
                 });
-                await tx.update(playersTable)
-                  .set({ score: finalScore })
-                  .where(eq(playersTable.id, playerId));
-              });
+              } catch (err) {
+                logger.error({ err, gameCode, playerId }, "Failed to persist answer to DB; rolling back in-memory score");
+                const player = getGameSession(gameCode)?.players.get(playerId);
+                if (player) player.score = originalScore;
+              }
             }
 
             const leaderboard = getLeaderboard(gameCode);
@@ -815,6 +853,7 @@ export function setupWebSocket(server: Server): void {
     });
 
     ws.on("close", () => {
+      clearInterval(inactivityChecker);
       rateLimitMap.delete(ws);
       if (isHost) {
         authorizedHostSockets.delete(ws);
