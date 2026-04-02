@@ -4,7 +4,7 @@ import { useGameWebSocket } from "@/hooks/use-websocket";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, SkipForward, Trophy, Home,
-  Copy, Check, Clock, Link2, Smartphone
+  Copy, Check, Clock, Link2, Smartphone, WifiOff
 } from "lucide-react";
 import { CountdownBar, AnswerGrid } from "@/components/game-ui";
 import confetti from "canvas-confetti";
@@ -46,6 +46,8 @@ export default function HostGame() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
   const [timer, setTimer] = useState(0);
+
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // FIXED: Missing Q&A state
   const [qaItems, setQaItems] = useState<HostQA[]>([]);
@@ -102,7 +104,25 @@ export default function HostGame() {
         );
         break;
 
+      case "host_state_sync": {
+        // Restore state after a page refresh or reconnect.
+        const syncedPlayers = (payload.playerList as Array<{ playerId: number; nickname: string }>) ?? [];
+        setPlayers(syncedPlayers);
+        if (payload.status === "active" && payload.currentQuestion) {
+          const q = payload.currentQuestion as any;
+          setCurrentQuestion(q);
+          setQuestionIndex(payload.currentQuestionIndex as number);
+          setTotalQuestions(payload.totalQuestions as number);
+          setTimer(q.timeLimit);
+          setCorrectOption(null);
+          setAnswersCount(0);
+          setGameState("question");
+        }
+        break;
+      }
+
       case "question_started":
+        setIsTransitioning(false);
         setCurrentQuestion(payload.question);
         setQuestionIndex(payload.questionIndex);
         setTotalQuestions(payload.totalQuestions);
@@ -157,12 +177,34 @@ export default function HostGame() {
 
   // ACTIONS
   const handleStart = () => emit("start_game", { gameCode });
-  const handleSkip = () => emit("end_question", { gameCode });
-  const handleNext = () => emit("next_question", { gameCode });
+  const handleSkip = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    emit("end_question", { gameCode });
+  };
+  const handleNext = () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    emit("next_question", { gameCode });
+  };
+  const handleDashboard = () => {
+    if (gameState !== "lobby" && gameState !== "podium") {
+      if (!window.confirm("Leave this game? All players will be disconnected.")) return;
+    }
+    setLocation("/dashboard");
+  };
 
   // ---------------- UI ----------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0C214C] via-[#1A316C] to-[#0054FF] flex flex-col">
+      {/* Connection loss banner */}
+      {!connected && (
+        <div className="bg-red-500 text-white text-center text-xs py-1.5 px-4 flex items-center justify-center gap-2">
+          <WifiOff size={13} />
+          Connection lost — reconnecting...
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white/10 backdrop-blur-md border-b border-white/20 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -176,7 +218,7 @@ export default function HostGame() {
             </div>
           </div>
           <button
-            onClick={() => setLocation("/dashboard")}
+            onClick={handleDashboard}
             className="px-4 py-2 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center gap-2"
           >
             <Home size={16} />
@@ -318,7 +360,12 @@ export default function HostGame() {
           >
             <div className="text-center mb-6">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-white/70">Question {questionIndex + 1} of {totalQuestions}</span>
+                <span className="text-white/70">
+                  Question {questionIndex + 1} of {totalQuestions}
+                  {questionIndex + 1 === totalQuestions && (
+                    <span className="ml-2 text-yellow-300 font-bold text-xs uppercase tracking-wider">⭐ Final Question</span>
+                  )}
+                </span>
                 <div className="flex items-center gap-2 text-white">
                   <Clock size={16} />
                   <span className="font-mono font-bold">{timer}s</span>
@@ -344,7 +391,8 @@ export default function HostGame() {
             <div className="flex gap-4 mt-6">
               <button
                 onClick={handleSkip}
-                className="px-6 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center gap-2"
+                disabled={isTransitioning}
+                className="px-6 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <SkipForward size={16} />
                 Skip Question
@@ -352,9 +400,10 @@ export default function HostGame() {
               {correctOption !== null && (
                 <button
                   onClick={handleNext}
-                  className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold hover:from-blue-500 hover:to-blue-700 transition-all flex items-center justify-center gap-2"
+                  disabled={isTransitioning}
+                  className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold hover:from-blue-500 hover:to-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next Question
+                  {questionIndex + 1 === totalQuestions ? "View Final Results" : "Next Question"}
                 </button>
               )}
             </div>
@@ -375,7 +424,7 @@ export default function HostGame() {
                 <Trophy className="text-yellow-300" size={40} />
               </div>
               <h2 className="text-3xl font-display font-black text-white mb-2">Leaderboard</h2>
-              <p className="text-white/70">Question {questionIndex} Results</p>
+              <p className="text-white/70">Question {questionIndex + 1} Results</p>
             </div>
 
             <div className="space-y-3 mb-6">
@@ -411,9 +460,10 @@ export default function HostGame() {
 
             <button
               onClick={handleNext}
-              className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold hover:from-blue-500 hover:to-blue-700 transition-all flex items-center justify-center gap-2"
+              disabled={isTransitioning}
+              className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-400 to-blue-600 text-white font-bold hover:from-blue-500 hover:to-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next Question
+              {questionIndex + 1 === totalQuestions ? "View Final Results" : "Next Question"}
             </button>
           </motion.div>
         </div>

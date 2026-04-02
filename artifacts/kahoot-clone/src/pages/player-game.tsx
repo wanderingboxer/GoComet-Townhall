@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRoute, useLocation, useSearch } from "wouter";
 import { useGameWebSocket } from "@/hooks/use-websocket";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, Home, Loader2, Trophy, Medal } from "lucide-react";
+import { CheckCircle2, XCircle, Home, Loader2, Trophy, WifiOff } from "lucide-react";
 import { AnswerGrid } from "@/components/game-ui";
 import confetti from "canvas-confetti";
 
@@ -34,6 +34,7 @@ export default function PlayerGame() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState(0);
   const [lastResult, setLastResult] = useState<{ isCorrect: boolean; points: number; score: number; rank: number } | null>(null);
+  const [correctOptionIndex, setCorrectOptionIndex] = useState<number | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const hasJoined = useRef(false);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,6 +75,7 @@ export default function PlayerGame() {
         setQuestionStartTime(Date.now());
         setSelectedOption(null);
         setLastResult(null);
+        setCorrectOptionIndex(null);
         setGameState("answering");
         break;
 
@@ -85,6 +87,7 @@ export default function PlayerGame() {
       case "question_ended": {
         const lb = (payload.leaderboard as LeaderboardEntry[]) || [];
         const correctOpt = payload.correctOption as number;
+        setCorrectOptionIndex(correctOpt);
         setLeaderboard(lb);
         if (gameState === "answering" || gameState === "waiting") {
           setLastResult((prev) => {
@@ -126,6 +129,14 @@ export default function PlayerGame() {
 
   return (
     <div className="fixed inset-0 flex flex-col font-sans overflow-hidden bg-background">
+
+      {/* Connection loss banner */}
+      {!connected && (
+        <div className="shrink-0 bg-red-500 text-white text-center text-xs py-1.5 px-4 flex items-center justify-center gap-2 z-30">
+          <WifiOff size={13} />
+          Connection lost — reconnecting...
+        </div>
+      )}
 
       {/* Header */}
       <header className="shrink-0 h-14 bg-white border-b border-border flex items-center justify-between px-4 z-20 shadow-sm">
@@ -180,10 +191,17 @@ export default function PlayerGame() {
                     <div className="text-2xl font-bold bg-black/20 px-6 py-2 rounded-full mt-3">+{lastResult.points} pts</div>
                   </motion.div>
                 ) : (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }} className="flex flex-col items-center">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }} className="flex flex-col items-center text-center">
                     <XCircle size={90} className="mb-5 drop-shadow-md" />
                     <h1 className="text-5xl font-display font-black mb-2">Incorrect</h1>
-                    <p className="text-lg font-semibold mt-3 opacity-80">Better luck next time!</p>
+                    {correctOptionIndex !== null && currentOptions[correctOptionIndex] ? (
+                      <div className="mt-3 bg-black/20 px-5 py-3 rounded-2xl">
+                        <p className="text-sm font-semibold opacity-70 mb-1">Correct answer</p>
+                        <p className="text-xl font-bold">{currentOptions[correctOptionIndex]}</p>
+                      </div>
+                    ) : (
+                      <p className="text-lg font-semibold mt-3 opacity-80">Better luck next time!</p>
+                    )}
                   </motion.div>
                 )}
                 <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-black/25 backdrop-blur-sm flex justify-between items-center font-bold text-lg">

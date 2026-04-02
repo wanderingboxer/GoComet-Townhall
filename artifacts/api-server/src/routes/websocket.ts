@@ -172,6 +172,32 @@ export function setupWebSocket(server: Server): void {
                 })),
               },
             }));
+            // Send full game state so the host can recover from a page refresh or reconnect.
+            const playerList = Array.from(session.players.values()).map((p) => ({
+              playerId: p.playerId,
+              nickname: p.nickname,
+            }));
+            const activeQuestion =
+              session.status === "active" && session.currentQuestionIndex >= 0
+                ? session.questions[session.currentQuestionIndex]
+                : null;
+            ws.send(JSON.stringify({
+              type: "host_state_sync",
+              payload: {
+                status: session.status,
+                playerList,
+                currentQuestionIndex: session.currentQuestionIndex,
+                totalQuestions: session.questions.length,
+                currentQuestion: activeQuestion
+                  ? {
+                      text: activeQuestion.text,
+                      options: activeQuestion.options,
+                      timeLimit: activeQuestion.timeLimit,
+                      points: activeQuestion.points,
+                    }
+                  : null,
+              },
+            }));
             logger.info({ gameCode }, "Host connected to game");
             break;
           }
@@ -395,6 +421,14 @@ export function setupWebSocket(server: Server): void {
             }
 
             const session = getGameSession(gameCode);
+            if (session) {
+              for (const p of session.players.values()) {
+                if (p.nickname.toLowerCase() === nickname.toLowerCase()) {
+                  ws.send(JSON.stringify({ type: "error", payload: { message: "Nickname already taken in this game" } }));
+                  return;
+                }
+              }
+            }
             if (!session) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Game not found" } }));
               return;
@@ -587,19 +621,21 @@ export function setupWebSocket(server: Server): void {
 
             const [game] = await db.select().from(gamesTable).where(eq(gamesTable.gameCode, gameCode));
             if (game) {
-              await db.insert(answersTable).values({
-                gameId: game.id,
-                playerId,
-                questionId: question.id,
-                selectedOption,
-                isCorrect: result.isCorrect ? 1 : 0,
-                pointsEarned: result.pointsEarned,
-                timeToAnswer,
+              const finalScore = session.players.get(playerId)?.score ?? 0;
+              await db.transaction(async (tx) => {
+                await tx.insert(answersTable).values({
+                  gameId: game.id,
+                  playerId,
+                  questionId: question.id,
+                  selectedOption,
+                  isCorrect: result.isCorrect ? 1 : 0,
+                  pointsEarned: result.pointsEarned,
+                  timeToAnswer,
+                });
+                await tx.update(playersTable)
+                  .set({ score: finalScore })
+                  .where(eq(playersTable.id, playerId));
               });
-
-              await db.update(playersTable)
-                .set({ score: session.players.get(playerId)?.score ?? 0 })
-                .where(eq(playersTable.id, playerId));
             }
 
             const leaderboard = getLeaderboard(gameCode);

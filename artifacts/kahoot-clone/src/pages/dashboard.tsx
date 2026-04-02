@@ -18,6 +18,7 @@ import {
   MessageCircle,
   LogOut,
   Shield,
+  Loader2,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/game-ui";
 import { useToast } from "@/hooks/use-toast";
@@ -322,10 +323,11 @@ export default function Dashboard() {
                   <div className="absolute inset-0 bg-[#0C214C]/15 opacity-100 flex items-center justify-center gap-4">
                     <button
                       onClick={() => handleLaunchSession(quiz.id)}
-                      className="game-button bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(12,33,76,0.2)] hover:-translate-y-1"
-                      title="Host Game"
+                      disabled={quiz.questionCount === 0 || createGame.isPending}
+                      className="game-button bg-white text-primary w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(12,33,76,0.2)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                      title={quiz.questionCount === 0 ? "Add questions before hosting" : "Host Game"}
                     >
-                      <Play fill="currentColor" size={22} />
+                      {createGame.isPending ? <Loader2 className="animate-spin" size={22} /> : <Play fill="currentColor" size={22} />}
                     </button>
                   </div>
                 </div>

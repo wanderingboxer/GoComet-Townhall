@@ -11,7 +11,7 @@ function getAllowedHostCodes(): string[] {
   const combined = [
     process.env.HOST_ACCESS_CODES,
     process.env.HOST_ACCESS_CODE,
-    process.env.SESSION_SECRET,
+    // NOTE: SESSION_SECRET must NOT be listed here — it is only for signing cookies.
   ]
     .filter(Boolean)
     .join(",");

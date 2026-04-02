@@ -103,6 +103,14 @@ export default function QuizEditor() {
 
     const normalized = normalizeQuestionValues(data);
 
+    // H8: Reject duplicate answer options.
+    const filled = normalized.options.filter(Boolean);
+    const unique = new Set(filled.map((o) => o.toLowerCase()));
+    if (unique.size < filled.length) {
+      toast({ title: "Duplicate options", description: "All answer options must be unique.", variant: "destructive" });
+      return;
+    }
+
     updateQuestion.mutate(
       { id: selectedQuestion.id, data: normalized },
       {
@@ -222,8 +230,13 @@ export default function QuizEditor() {
             className="text-xl font-display font-bold bg-transparent border-none outline-none focus:ring-2 focus:ring-primary/20 rounded px-2 py-1 w-64"
             defaultValue={quiz.title}
             onBlur={(e) => {
-              if (e.target.value !== quiz.title) {
-                updateQuiz.mutate({ id: quiz.id, data: { title: e.target.value } });
+              const newTitle = e.target.value.trim();
+              if (!newTitle) {
+                e.target.value = quiz.title; // revert to last saved title
+                return;
+              }
+              if (newTitle !== quiz.title) {
+                updateQuiz.mutate({ id: quiz.id, data: { title: newTitle } });
               }
             }}
           />
