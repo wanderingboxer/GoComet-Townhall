@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, and } from "drizzle-orm";
 import { db, quizzesTable, questionsTable, gamesTable } from "@workspace/db";
 import {
   CreateQuizBody,
@@ -132,6 +132,16 @@ router.delete("/quizzes/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const [activeGame] = await db
+    .select({ id: gamesTable.id })
+    .from(gamesTable)
+    .where(and(eq(gamesTable.quizId, params.data.id), eq(gamesTable.status, "active")));
+
+  if (activeGame) {
+    res.status(409).json({ error: "Cannot delete a quiz while a game is in progress" });
+    return;
+  }
+
   try {
     // Remove related games first so the FK constraint doesn't block quiz deletion
     await db.delete(gamesTable).where(eq(gamesTable.quizId, params.data.id));
@@ -171,6 +181,12 @@ router.post("/quizzes/:id/questions", async (req, res): Promise<void> => {
     return;
   }
 
+  const { options, correctOption } = parsed.data;
+  if (correctOption < 0 || correctOption >= options.length) {
+    res.status(400).json({ error: "correctOption must be a valid index within the options array" });
+    return;
+  }
+
   const [question] = await db.insert(questionsTable).values({
     quizId: params.data.id,
     text: parsed.data.text,
@@ -195,6 +211,13 @@ router.patch("/questions/:id", async (req, res): Promise<void> => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+
+  if (parsed.data.options !== undefined && parsed.data.correctOption !== undefined) {
+    if (parsed.data.correctOption < 0 || parsed.data.correctOption >= parsed.data.options.length) {
+      res.status(400).json({ error: "correctOption must be a valid index within the options array" });
+      return;
+    }
   }
 
   const [question] = await db

@@ -55,7 +55,7 @@ interface WsMessage {
 }
 
 export function setupWebSocket(server: Server): void {
-  const wss = new WebSocketServer({ server, path: "/api/ws" });
+  const wss = new WebSocketServer({ server, path: "/api/ws", maxPayload: 64 * 1024 });
 
   logger.info("WebSocket server initialized at /api/ws");
 

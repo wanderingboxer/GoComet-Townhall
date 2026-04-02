@@ -118,7 +118,7 @@ export default function PlayerGame() {
   }, [lastMessage]);
 
   const handleSelectOption = (index: number) => {
-    if (selectedOption !== null || !playerId) return;
+    if (selectedOption !== null || !playerId || !connected) return;
     setSelectedOption(index);
     setGameState("waiting");
     emit("submit_answer", { gameCode, playerId, questionIndex, selectedOption: index, timeToAnswer: Date.now() - questionStartTime });
