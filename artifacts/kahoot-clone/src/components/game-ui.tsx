@@ -61,8 +61,7 @@ export function AnswerGrid({
       <AnimatePresence>
         {options.map((option, index) => {
           const config = ANSWER_COLORS[index % 4];
-          const Icon = config.icon;
-          
+
           let stateClass = "";
           let isFaded = false;
           
@@ -101,10 +100,7 @@ export function AnswerGrid({
                 "text-white overflow-hidden group"
               )}
             >
-              <div className="absolute top-4 left-4 p-3 bg-black/15 rounded-xl">
-                <Icon size={32} className="text-white drop-shadow-md" strokeWidth={3} />
-              </div>
-              <span className={cn(
+<span className={cn(
                 "font-display font-bold text-center drop-shadow-lg text-stroke leading-tight break-words px-2 w-full",
                 getOptionTextSize(option)
               )}>
