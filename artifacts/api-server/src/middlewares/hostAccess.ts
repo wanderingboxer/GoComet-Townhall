@@ -1,10 +1,11 @@
+import { timingSafeEqual } from "crypto";
 import cookieParser from "cookie-parser";
 import type { NextFunction, Request, Response } from "express";
 
 export const HOST_ACCESS_COOKIE = "host_access";
 
 function getCookieSecret(): string {
-  return process.env.SESSION_SECRET?.trim() || "dev-session-secret";
+  return process.env.SESSION_SECRET!.trim();
 }
 
 function getAllowedHostCodes(): string[] {
@@ -26,7 +27,13 @@ export function verifyHostAccessCode(accessKey: string): boolean {
   const normalized = accessKey.trim();
   if (!normalized) return false;
 
-  return getAllowedHostCodes().includes(normalized);
+  return getAllowedHostCodes().some(code => {
+    try {
+      return timingSafeEqual(Buffer.from(normalized), Buffer.from(code));
+    } catch {
+      return false; // buffers of different lengths throw — treat as not equal
+    }
+  });
 }
 
 function getHostAccessCodeFromHeaders(headers?: Request["headers"]): string | null {

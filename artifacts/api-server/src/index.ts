@@ -11,6 +11,12 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// Validate required environment variables before starting.
+if (!process.env.SESSION_SECRET?.trim()) {
+  logger.error("SESSION_SECRET environment variable is required — set it in your .env or deployment config");
+  process.exit(1);
+}
+
 const server = http.createServer(app);
 setupWebSocket(server);
 

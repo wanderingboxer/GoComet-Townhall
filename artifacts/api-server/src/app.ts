@@ -9,7 +9,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
-const sessionSecret = process.env.SESSION_SECRET?.trim() || "dev-session-secret";
+const sessionSecret = process.env.SESSION_SECRET!.trim();
 
 app.use(
   pinoHttp({
@@ -30,7 +30,16 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || "http://localhost:5173")
+  .split(",").map(o => o.trim());
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(cookieParser(sessionSecret));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

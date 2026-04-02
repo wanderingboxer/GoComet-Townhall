@@ -8,6 +8,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: HOST_ACCESS_CODE
+        sync: false
+      - key: ALLOWED_ORIGIN
+        value: https://quiz-hub-frontend-y1u6.onrender.com
 
   - type: web
     name: quiz-hub-frontend
@@ -15,6 +21,7 @@ services:
     buildCommand: pnpm install && pnpm --filter @workspace/kahoot-clone run build
     staticPublishPath: ./artifacts/kahoot-clone/dist/public
     envVars:
+      # NOTE: Update this URL if the quiz-hub-backend service is renamed or redeployed.
       - key: VITE_API_ORIGIN
         value: https://quiz-hub-backend-y1u6.onrender.com
     routes:

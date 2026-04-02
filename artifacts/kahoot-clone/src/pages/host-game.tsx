@@ -30,7 +30,13 @@ export default function HostGame() {
 
   const [gameState, setGameState] = useState<GameState>("lobby");
   const [players, setPlayers] = useState<Array<{ nickname: string; playerId: number }>>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
+  interface Question {
+    text: string;
+    options: string[];
+    timeLimit: number;
+    points: number;
+  }
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [answersCount, setAnswersCount] = useState(0);
@@ -137,25 +143,27 @@ export default function HostGame() {
 
   // TIMER
   useEffect(() => {
-    if (gameState !== "question" || timer <= 0) return;
+    if (gameState !== "question") return;
 
     const id = setInterval(() => setTimer((t) => Math.max(0, t - 1)), 1000);
     return () => clearInterval(id);
-  }, [gameState, timer]);
+  }, [gameState]);
 
   // CONFETTI
   useEffect(() => {
     if (gameState !== "podium") return;
 
     const end = Date.now() + 5000;
+    let frameId: number;
 
     const frame = () => {
       confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
       confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
-      if (Date.now() < end) requestAnimationFrame(frame);
+      if (Date.now() < end) frameId = requestAnimationFrame(frame);
     };
 
-    frame();
+    frameId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(frameId);
   }, [gameState]);
 
   if (!gameCode) return <div>Game not found</div>;

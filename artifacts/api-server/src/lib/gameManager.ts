@@ -82,6 +82,10 @@ export function addGlobalLiveQuestion(clientId: string, text: string): GlobalLiv
     isPublic: false,
   };
 
+  const MAX_PER_CLIENT_GLOBAL_QA = 5;
+  const clientCount = globalLiveQuestions.filter(q => q.clientId === clientId && !q.answer).length;
+  if (clientCount >= MAX_PER_CLIENT_GLOBAL_QA) return null;
+
   // If at capacity, evict already-answered entries first.
   if (globalLiveQuestions.length >= MAX_GLOBAL_QA) {
     let i = globalLiveQuestions.length;
@@ -359,7 +363,8 @@ export function submitAnswer(
 
   let pointsEarned = 0;
   if (isCorrect) {
-    const timeRatio = Math.max(0, 1 - timeToAnswer / (question.timeLimit * 1000));
+    const clampedTime = Math.max(0, Math.min(timeToAnswer, question.timeLimit * 1000));
+    const timeRatio = 1 - clampedTime / (question.timeLimit * 1000);
     pointsEarned = Math.round(question.points * (0.5 + 0.5 * timeRatio));
   }
 
