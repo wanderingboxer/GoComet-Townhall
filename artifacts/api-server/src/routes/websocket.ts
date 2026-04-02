@@ -40,6 +40,11 @@ import { hasHostAccessFromCookieHeader, verifyHostAccessCode } from "../middlewa
 // Hosts are subscribed once they successfully `host_join`.
 const authorizedHostSockets = new Set<WebSocket>();
 
+// Per-connection token bucket for rate limiting.
+const RATE_LIMIT_MAX_TOKENS = 20;
+const RATE_LIMIT_REFILL_PER_SEC = 5;
+const rateLimitMap = new Map<WebSocket, { tokens: number; lastRefill: number }>();
+
 // Anonymous Q&A clients from the main page.
 // We keep a single active socket per clientId.
 const qaClientSockets = new Map<string, WebSocket>();
@@ -62,6 +67,22 @@ export function setupWebSocket(server: Server): void {
     let currentQaClientId: string | null = null;
 
     ws.on("message", async (raw) => {
+      // Token-bucket rate limiting per connection.
+      const now = Date.now();
+      let bucket = rateLimitMap.get(ws);
+      if (!bucket) {
+        bucket = { tokens: RATE_LIMIT_MAX_TOKENS, lastRefill: now };
+        rateLimitMap.set(ws, bucket);
+      }
+      const elapsed = (now - bucket.lastRefill) / 1000;
+      bucket.tokens = Math.min(RATE_LIMIT_MAX_TOKENS, bucket.tokens + elapsed * RATE_LIMIT_REFILL_PER_SEC);
+      bucket.lastRefill = now;
+      if (bucket.tokens < 1) {
+        logger.warn("WebSocket rate limit exceeded, dropping message");
+        return;
+      }
+      bucket.tokens -= 1;
+
       let msg: WsMessage;
       try {
         msg = JSON.parse(raw.toString()) as WsMessage;
@@ -368,6 +389,11 @@ export function setupWebSocket(server: Server): void {
             const gameCode = String(msg.payload.gameCode).toUpperCase();
             const nickname = String(msg.payload.nickname).trim().slice(0, 20);
 
+            if (!nickname) {
+              ws.send(JSON.stringify({ type: "error", payload: { message: "Nickname cannot be empty" } }));
+              return;
+            }
+
             const session = getGameSession(gameCode);
             if (!session) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Game not found" } }));
@@ -553,7 +579,11 @@ export function setupWebSocket(server: Server): void {
 
             const session = getGameSession(gameCode);
             if (!session) return;
+
+            // Bounds-check both indices before using them.
+            if (questionIndex < 0 || questionIndex >= session.questions.length) return;
             const question = session.questions[questionIndex];
+            if (selectedOption < 0 || selectedOption >= question.options.length) return;
 
             const [game] = await db.select().from(gamesTable).where(eq(gamesTable.gameCode, gameCode));
             if (game) {
@@ -736,6 +766,7 @@ export function setupWebSocket(server: Server): void {
     });
 
     ws.on("close", () => {
+      rateLimitMap.delete(ws);
       if (isHost) {
         authorizedHostSockets.delete(ws);
       }

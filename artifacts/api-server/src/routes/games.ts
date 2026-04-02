@@ -62,6 +62,11 @@ router.post("/games", async (req, res): Promise<void> => {
     attempts++;
   }
 
+  if (attempts >= 10) {
+    res.status(503).json({ error: "Could not generate a unique game code. Please try again." });
+    return;
+  }
+
   const [game] = await db.insert(gamesTable).values({
     gameCode,
     quizId: parsed.data.quizId,

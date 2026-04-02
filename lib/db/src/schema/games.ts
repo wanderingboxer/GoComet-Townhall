@@ -33,7 +33,7 @@ export const answersTable = pgTable("answers", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id").notNull().references(() => gamesTable.id, { onDelete: "cascade" }),
   playerId: integer("player_id").notNull().references(() => playersTable.id, { onDelete: "cascade" }),
-  questionId: integer("question_id").notNull().references(() => questionsTable.id),
+  questionId: integer("question_id").notNull().references(() => questionsTable.id, { onDelete: "cascade" }),
   selectedOption: integer("selected_option").notNull(),
   isCorrect: integer("is_correct").notNull().default(0),
   pointsEarned: integer("points_earned").notNull().default(0),
