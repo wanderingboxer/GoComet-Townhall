@@ -339,7 +339,7 @@ export default function HostGame() {
                   <span className="font-mono font-bold">{timer}s</span>
                 </div>
               </div>
-              <CountdownBar timeLimit={30} timeLeft={timer} />
+              <CountdownBar timeLimit={currentQuestion?.timeLimit ?? 30} timeLeft={timer} />
             </div>
 
             <div className="bg-white/10 rounded-2xl p-6 mb-6">

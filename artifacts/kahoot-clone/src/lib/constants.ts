@@ -7,5 +7,5 @@ export const ANSWER_COLORS = [
   { bg: "bg-quiz-green", shadow: "shadow-[#154805]", hover: "hover:bg-[#26890C]/90", icon: Square },
 ];
 
-export const TIME_LIMITS = [5, 10, 20, 30, 60, 90, 120];
+export const TIME_LIMITS = [5, 10, 15, 20, 30, 60, 90, 120];
 export const POINT_VALUES = [0, 500, 1000, 2000];
