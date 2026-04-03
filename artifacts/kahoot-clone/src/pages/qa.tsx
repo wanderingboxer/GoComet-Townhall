@@ -33,7 +33,7 @@ export default function QA() {
 
   const getStoredHostAccessCode = () =>
     typeof window !== "undefined"
-      ? window.sessionStorage.getItem(HOST_ACCESS_STORAGE_KEY) || ""
+      ? window.localStorage.getItem(HOST_ACCESS_STORAGE_KEY) || ""
       : "";
 
   const getHostAccessHeaders = () => {
@@ -74,7 +74,7 @@ export default function QA() {
 
     const hostName =
       typeof window !== "undefined"
-        ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY) || "Host"
+        ? window.localStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY) || "Host"
         : "Host";
 
     emit("qa_host_join", { accessKey: getStoredHostAccessCode(), hostName });
@@ -148,7 +148,8 @@ export default function QA() {
       method: "POST",
       credentials: "include",
     });
-    sessionStorage.clear();
+    localStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
+    localStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
     setLocation("/dashboard");
   };
 
