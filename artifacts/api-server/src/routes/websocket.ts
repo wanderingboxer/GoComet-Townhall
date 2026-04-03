@@ -690,13 +690,14 @@ export function setupWebSocket(server: Server): void {
 
             const gameCode = currentGameCode;
             const playerId = currentPlayerId;
-            const questionIndex = msg.payload.questionIndex;
-            const selectedOption = msg.payload.selectedOption;
-            const timeToAnswer = msg.payload.timeToAnswer;
+            const questionIndex = Number(msg.payload.questionIndex);
+            const selectedOption = Number(msg.payload.selectedOption);
+            const timeToAnswer = Number(msg.payload.timeToAnswer);
+            // Reject NaN, non-integers, negatives — Number() gives us a typed number so TS is happy.
             if (
               !Number.isInteger(questionIndex) || questionIndex < 0 ||
               !Number.isInteger(selectedOption) || selectedOption < 0 ||
-              typeof timeToAnswer !== "number" || timeToAnswer < 0
+              !Number.isFinite(timeToAnswer) || timeToAnswer < 0
             ) return;
 
             // Capture original score before submitAnswer modifies it (needed for rollback on DB failure).
