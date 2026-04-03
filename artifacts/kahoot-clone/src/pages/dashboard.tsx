@@ -38,7 +38,7 @@ export default function Dashboard() {
   const [accessKey, setAccessKey] = useState("");
   const [hostName, setHostName] = useState(
     typeof window !== "undefined"
-      ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY) || ""
+      ? window.localStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY) || ""
       : ""
   );
 
@@ -49,7 +49,7 @@ export default function Dashboard() {
 
   const getStoredHostAccessCode = () =>
     typeof window !== "undefined"
-      ? window.sessionStorage.getItem(HOST_ACCESS_STORAGE_KEY) || ""
+      ? window.localStorage.getItem(HOST_ACCESS_STORAGE_KEY) || ""
       : "";
 
   const getHostAccessHeaders = (overrideCode?: string) => {
@@ -62,8 +62,8 @@ export default function Dashboard() {
     const checkAccess = async () => {
       // First check if we have stored credentials
       const storedCode = getStoredHostAccessCode();
-      const storedName = typeof window !== "undefined" 
-        ? window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)
+      const storedName = typeof window !== "undefined"
+        ? window.localStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)
         : null;
       
       console.log("Dashboard: Checking access", { storedCode, storedName });
@@ -164,8 +164,8 @@ export default function Dashboard() {
 
       if (!res.ok) throw new Error("Invalid access code");
 
-      sessionStorage.setItem(HOST_ACCESS_STORAGE_KEY, accessKey);
-      sessionStorage.setItem(HOST_DISPLAY_NAME_STORAGE_KEY, hostName);
+      localStorage.setItem(HOST_ACCESS_STORAGE_KEY, accessKey);
+      localStorage.setItem(HOST_DISPLAY_NAME_STORAGE_KEY, hostName);
 
       setHasHostAccess(true);
       setAccessKey("");
@@ -182,7 +182,8 @@ export default function Dashboard() {
       credentials: "include",
     });
 
-    sessionStorage.clear();
+    localStorage.removeItem(HOST_ACCESS_STORAGE_KEY);
+    localStorage.removeItem(HOST_DISPLAY_NAME_STORAGE_KEY);
     setHasHostAccess(false);
     setHostName("");
     setAccessKey("");

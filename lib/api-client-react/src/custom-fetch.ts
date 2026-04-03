@@ -46,7 +46,7 @@ function getStoredHostAccessCode(): string | null {
   if (typeof window === "undefined") return null;
 
   try {
-    const storedValue = window.sessionStorage.getItem(HOST_ACCESS_STORAGE_KEY)?.trim();
+    const storedValue = window.localStorage.getItem(HOST_ACCESS_STORAGE_KEY)?.trim();
     return storedValue || null;
   } catch {
     return null;

@@ -8,6 +8,9 @@ import confetti from "canvas-confetti";
 
 type PlayerState = "lobby" | "answering" | "waiting" | "result" | "between_questions" | "podium";
 
+const PLAYER_ID_STORAGE_KEY = "quizblast_player_id";
+const PLAYER_GAME_CODE_KEY = "quizblast_player_game_code";
+
 interface LeaderboardEntry {
   nickname: string;
   score: number;
@@ -24,7 +27,12 @@ export default function PlayerGame() {
     if (typeof window === "undefined") return "";
     return sessionStorage.getItem("quizblast_nickname") || "";
   });
-  const [playerId, setPlayerId] = useState<number | null>(null);
+  const [playerId, setPlayerId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const storedId = sessionStorage.getItem(PLAYER_ID_STORAGE_KEY);
+    const storedCode = sessionStorage.getItem(PLAYER_GAME_CODE_KEY);
+    return storedId && storedCode === gameCode ? Number(storedId) : null;
+  });
 
   const { connected, lastMessage, emit } = useGameWebSocket();
   const [gameState, setGameState] = useState<PlayerState>("lobby");
@@ -56,9 +64,9 @@ export default function PlayerGame() {
   useEffect(() => {
     if (connected && gameCode && nickname && !hasJoined.current) {
       hasJoined.current = true;
-      emit("player_join", { gameCode, nickname });
+      emit("player_join", { gameCode, nickname, ...(playerId ? { playerId } : {}) });
     }
-  }, [connected, gameCode, nickname, emit]);
+  }, [connected, gameCode, nickname, emit, playerId]);
 
   useEffect(() => {
     if (!lastMessage) return;
@@ -67,6 +75,8 @@ export default function PlayerGame() {
     switch (type) {
       case "joined":
         setPlayerId(payload.playerId);
+        sessionStorage.setItem(PLAYER_ID_STORAGE_KEY, String(payload.playerId));
+        sessionStorage.setItem(PLAYER_GAME_CODE_KEY, gameCode);
         break;
 
       case "question_started":
@@ -112,6 +122,8 @@ export default function PlayerGame() {
 
       case "game_ended":
         if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+        sessionStorage.removeItem(PLAYER_ID_STORAGE_KEY);
+        sessionStorage.removeItem(PLAYER_GAME_CODE_KEY);
         setGameState("podium");
         break;
     }

@@ -49,7 +49,7 @@ export default function HostGame() {
   const hostDisplayName =
     typeof window === "undefined"
       ? "Host"
-      : window.sessionStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)?.trim() || "Host";
+      : window.localStorage.getItem(HOST_DISPLAY_NAME_STORAGE_KEY)?.trim() || "Host";
 
   const [copied, setCopied] = useState(false);
 
@@ -76,7 +76,7 @@ export default function HostGame() {
     const accessKey =
       typeof window === "undefined"
         ? null
-        : window.sessionStorage.getItem(HOST_ACCESS_STORAGE_KEY)?.trim() || null;
+        : window.localStorage.getItem(HOST_ACCESS_STORAGE_KEY)?.trim() || null;
 
     emit("host_join", { gameCode, accessKey, hostName: hostDisplayName });
   }, [connected, gameCode, emit, hostDisplayName]);

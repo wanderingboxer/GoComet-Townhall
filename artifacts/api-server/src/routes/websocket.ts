@@ -428,6 +428,11 @@ export function setupWebSocket(server: Server): void {
 
             const gameCode = String(msg.payload.gameCode).toUpperCase();
             const nickname = String(msg.payload.nickname).trim().slice(0, 20);
+            // Optional reconnect hint: client sends back the playerId it received on first join.
+            const reconnectId =
+              Number.isInteger(msg.payload.playerId) && (msg.payload.playerId as number) > 0
+                ? (msg.payload.playerId as number)
+                : null;
 
             if (!nickname) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Nickname cannot be empty" } }));
@@ -435,14 +440,6 @@ export function setupWebSocket(server: Server): void {
             }
 
             const session = getGameSession(gameCode);
-            if (session) {
-              for (const p of session.players.values()) {
-                if (p.nickname.toLowerCase() === nickname.toLowerCase()) {
-                  ws.send(JSON.stringify({ type: "error", payload: { message: "Nickname already taken in this game" } }));
-                  return;
-                }
-              }
-            }
             if (!session) {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Game not found" } }));
               return;
@@ -451,6 +448,61 @@ export function setupWebSocket(server: Server): void {
             if (session.status === "finished") {
               ws.send(JSON.stringify({ type: "error", payload: { message: "Game already finished" } }));
               return;
+            }
+
+            // --- RECONNECT PATH ---
+            // If the client sends its old playerId and it matches a live slot, reconnect
+            // to the existing slot rather than creating a new player record.
+            if (reconnectId !== null) {
+              const existing = session.players.get(reconnectId);
+              if (existing && existing.nickname.toLowerCase() === nickname.toLowerCase()) {
+                // Evict the stale socket if it is still open — this closes the M5 race window.
+                if (existing.ws !== ws && existing.ws.readyState === WebSocket.OPEN) {
+                  existing.ws.close(1000, "Replaced by reconnect");
+                }
+                existing.ws = ws;
+                currentGameCode = gameCode;
+                currentPlayerId = reconnectId;
+
+                ws.send(JSON.stringify({
+                  type: "joined",
+                  payload: { playerId: reconnectId, nickname, gameCode },
+                }));
+
+                // Resend current question so the player can continue answering.
+                if (session.status === "active" && session.currentQuestionIndex >= 0) {
+                  const currentQ = session.questions[session.currentQuestionIndex];
+                  const elapsed = Date.now() - session.questionStartTime;
+                  const remainingTime = Math.max(1, currentQ.timeLimit - Math.floor(elapsed / 1000));
+                  if (remainingTime >= 3) {
+                    sendToPlayer(gameCode, reconnectId, {
+                      type: "question_started",
+                      payload: {
+                        questionIndex: session.currentQuestionIndex,
+                        question: {
+                          text: currentQ.text,
+                          options: currentQ.options,
+                          timeLimit: remainingTime,
+                          points: currentQ.points,
+                        },
+                        totalQuestions: session.questions.length,
+                      },
+                    });
+                  }
+                }
+
+                logger.info({ gameCode, playerId: reconnectId, nickname }, "Player reconnected");
+                break;
+              }
+              // playerId provided but not found (e.g. backend restarted) — fall through to new join.
+            }
+
+            // --- NEW JOIN PATH ---
+            for (const p of session.players.values()) {
+              if (p.nickname.toLowerCase() === nickname.toLowerCase()) {
+                ws.send(JSON.stringify({ type: "error", payload: { message: "Nickname already taken in this game" } }));
+                return;
+              }
             }
 
             const [game] = await db
