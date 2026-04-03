@@ -54,11 +54,12 @@ export default function PlayerGame() {
     if (!nickname) setLocation("/");
   }, [nickname, setLocation]);
 
-  // Reset join flag and playerId on disconnect so the player auto-rejoins on reconnect
+  // Reset join flag on disconnect so the player auto-rejoins on reconnect.
+  // Do NOT clear playerId here — it must survive the disconnect so the backend
+  // can match the reconnecting player to their existing slot.
   useEffect(() => {
     if (!connected) {
       hasJoined.current = false;
-      setPlayerId(null);
     }
   }, [connected]);
 
