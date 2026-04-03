@@ -13,7 +13,7 @@ services:
       - key: HOST_ACCESS_CODE
         sync: false
       - key: ALLOWED_ORIGIN
-        value: https://quiz-hub-frontend-y1u6.onrender.com
+        value: https://quiz-hub-frontend.onrender.com
 
   - type: web
     name: quiz-hub-frontend
