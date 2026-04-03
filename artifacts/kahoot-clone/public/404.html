@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // SPA fallback: when the static host returns 404 for a deep URL (e.g. /play/GAMECODE),
+      // save the full path+search+hash and redirect to the root. main.tsx reads it back
+      // and restores the URL so React Router navigates to the right page.
+      sessionStorage.setItem(
+        '__spa_redirect',
+        location.pathname + location.search + location.hash
+      );
+      location.replace('/');
+    </script>
+  </head>
+  <body></body>
+</html>
