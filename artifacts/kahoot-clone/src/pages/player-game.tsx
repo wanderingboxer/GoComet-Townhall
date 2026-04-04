@@ -38,6 +38,7 @@ export default function PlayerGame() {
   const [gameState, setGameState] = useState<PlayerState>("lobby");
 
   const [currentOptions, setCurrentOptions] = useState<string[]>([]);
+  const [currentQuestionText, setCurrentQuestionText] = useState<string>("");
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState(0);
@@ -84,6 +85,7 @@ export default function PlayerGame() {
       case "question_started":
         if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
         prevScoreRef.current = lastResult?.score ?? prevScoreRef.current;
+        setCurrentQuestionText(payload.question.text as string);
         setCurrentOptions(payload.question.options);
         setQuestionIndex(payload.questionIndex);
         setQuestionStartTime(Date.now());
@@ -191,17 +193,31 @@ export default function PlayerGame() {
 
             {/* ANSWERING */}
             {gameState === "answering" && (
-              <div className="flex-1 p-2">
-                <AnswerGrid options={currentOptions} onSelect={handleSelectOption} />
+              <div className="flex-1 flex flex-col min-h-0 p-3 gap-3">
+                <div className="shrink-0 bg-white rounded-2xl shadow-md px-5 py-4 text-center">
+                  <p className="text-base font-semibold text-foreground leading-snug">
+                    {currentQuestionText}
+                  </p>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <AnswerGrid options={currentOptions} onSelect={handleSelectOption} />
+                </div>
               </div>
             )}
 
             {/* WAITING */}
             {gameState === "waiting" && (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 bg-muted">
-                <Loader2 className="animate-spin text-muted-foreground mb-5" size={52} />
-                <h2 className="text-2xl font-display font-bold text-foreground text-center">Answer locked in!</h2>
-                <p className="text-muted-foreground mt-2">Waiting for others...</p>
+              <div className="flex-1 flex flex-col p-3 gap-3 bg-muted">
+                <div className="shrink-0 bg-white rounded-2xl shadow-md px-5 py-4 text-center">
+                  <p className="text-base font-semibold text-foreground leading-snug">
+                    {currentQuestionText}
+                  </p>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="animate-spin text-muted-foreground" size={48} />
+                  <h2 className="text-2xl font-display font-bold text-foreground text-center">Answer locked in!</h2>
+                  <p className="text-muted-foreground">Waiting for others...</p>
+                </div>
               </div>
             )}
 
